@@ -14,11 +14,67 @@ interface SubmitThemeResponse {
 type SubmitErrors = ReadonlyArray<{ readonly type: string; readonly message: string; readonly line?: number; readonly column?: number }> | null;
 
 const exampleCss = `:root {
+  /* 主题色：红色系 */
   --color-primary: #ff4d4f;
+  --color-surface: #1a1a2e;
+  --color-border: rgba(255, 77, 79, 0.3);
 }
 
+/* 按钮样式 */
+.user-theme .theme-button-primary {
+  background: var(--color-primary) !important;
+  box-shadow: 0 4px 12px rgba(255, 77, 79, 0.3);
+  transition: all 0.2s;
+}
+
+.user-theme .theme-button-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(255, 77, 79, 0.4);
+}
+
+.user-theme .theme-button-outline {
+  border-color: var(--color-primary) !important;
+  color: var(--color-primary) !important;
+}
+
+.user-theme .theme-button-outline:hover {
+  background: var(--color-primary) !important;
+  color: #fff !important;
+}
+
+/* 卡片样式 */
+.user-theme .theme-card {
+  border-color: var(--color-border) !important;
+  background: var(--color-surface) !important;
+  transition: all 0.2s;
+}
+
+.user-theme .theme-card:hover {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 4px 12px rgba(255, 77, 79, 0.1);
+}
+
+/* 表单元素 */
+.user-theme .theme-input:focus,
+.user-theme .theme-textarea:focus,
+.user-theme .theme-select:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(255, 77, 79, 0.1);
+}
+
+/* 链接 */
 .user-theme a {
   color: var(--color-primary);
+  transition: opacity 0.2s;
+}
+
+.user-theme a:hover {
+  opacity: 0.8;
+}
+
+/* 徽章 */
+.user-theme .theme-badge {
+  background: var(--color-primary) !important;
 }
 `;
 
@@ -72,7 +128,7 @@ export function ThemeSwitcher() {
         </span>
         <span style={{ opacity: 0.7 }}>{theme.isLoading ? "加载中…" : "就绪"}</span>
         <button onClick={() => void theme.refreshTheme()} style={{ padding: "8px 10px" }}>刷新</button>
-        <button onClick={() => theme.revertToOfficial()} style={{ padding: "8px 10px" }}>回退官方</button>
+        <button onClick={() => void theme.revertToOfficial()} style={{ padding: "8px 10px" }}>回退官方</button>
       </div>
       {theme.error ? (
         <div style={{ border: "1px solid rgba(255,255,255,.12)", padding: 12, borderRadius: 12, background: "rgba(255,0,0,.08)" }}>
@@ -106,6 +162,98 @@ export function ThemeSwitcher() {
           </label>
           <input type="file" accept=".css,text/css" onChange={(e) => void onPickFile(e.target.files?.[0] ?? null)} />
           <button onClick={() => void onSubmit()} style={{ padding: "8px 10px" }}>提交并应用</button>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button
+            onClick={() => {
+              setCss(`:root {
+  --color-primary: #10b981;
+  --color-surface: #064e3b;
+  --color-border: rgba(16, 185, 129, 0.3);
+}
+
+.user-theme .theme-button-primary {
+  background: var(--color-primary) !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.user-theme .theme-card {
+  border-color: var(--color-border) !important;
+  background: var(--color-surface) !important;
+}
+
+.user-theme a {
+  color: var(--color-primary);
+}`);
+              setSource("ai");
+            }}
+            style={{ padding: "6px 12px", fontSize: 12, borderRadius: 6, border: "1px solid rgba(255,255,255,.12)", background: "rgba(255,255,255,.04)", cursor: "pointer" }}
+          >
+            预设：绿色主题
+          </button>
+          <button
+            onClick={() => {
+              setCss(`:root {
+  --color-primary: #8b5cf6;
+  --color-surface: #3b1f5e;
+  --color-border: rgba(139, 92, 246, 0.3);
+}
+
+.user-theme .theme-button-primary {
+  background: var(--color-primary) !important;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.user-theme .theme-card {
+  border-color: var(--color-border) !important;
+  background: var(--color-surface) !important;
+}
+
+.user-theme a {
+  color: var(--color-primary);
+}`);
+              setSource("ai");
+            }}
+            style={{ padding: "6px 12px", fontSize: 12, borderRadius: 6, border: "1px solid rgba(255,255,255,.12)", background: "rgba(255,255,255,.04)", cursor: "pointer" }}
+          >
+            预设：紫色主题
+          </button>
+          <button
+            onClick={() => {
+              setCss(`:root {
+  --color-primary: #f59e0b;
+  --color-surface: #78350f;
+  --color-border: rgba(245, 158, 11, 0.3);
+}
+
+.user-theme .theme-button-primary {
+  background: var(--color-primary) !important;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.user-theme .theme-card {
+  border-color: var(--color-border) !important;
+  background: var(--color-surface) !important;
+}
+
+.user-theme a {
+  color: var(--color-primary);
+}`);
+              setSource("ai");
+            }}
+            style={{ padding: "6px 12px", fontSize: 12, borderRadius: 6, border: "1px solid rgba(255,255,255,.12)", background: "rgba(255,255,255,.04)", cursor: "pointer" }}
+          >
+            预设：橙色主题
+          </button>
+          <button
+            onClick={() => {
+              setCss(exampleCss);
+              setSource("ai");
+            }}
+            style={{ padding: "6px 12px", fontSize: 12, borderRadius: 6, border: "1px solid rgba(255,255,255,.12)", background: "rgba(255,255,255,.04)", cursor: "pointer" }}
+          >
+            预设：红色主题（默认）
+          </button>
         </div>
         <textarea value={css} onChange={(e) => setCss(e.target.value)} rows={10} style={{ width: "100%", padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,.12)", background: "rgba(255,255,255,.03)", color: "inherit", fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" }} />
         <div style={{ opacity: 0.7, fontSize: 13 }}>

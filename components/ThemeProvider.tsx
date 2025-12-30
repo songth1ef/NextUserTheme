@@ -14,7 +14,7 @@ interface ThemeContextValue {
   readonly isLoading: boolean;
   readonly error: Error | null;
   readonly switchTheme: (version: string) => Promise<void>;
-  readonly revertToOfficial: () => void;
+  readonly revertToOfficial: () => Promise<void>;
   readonly refreshTheme: () => Promise<void>;
   readonly getThemeHistory: () => Promise<UserCssRecord[]>;
 }
@@ -147,13 +147,37 @@ export function ThemeProvider(props: { readonly children: ReactNode; readonly in
     if (trimmed.length === 0) return;
     if (currentVersion) removeStyle(`user-theme-${currentVersion}`);
     await applyVersion({ version: trimmed });
+    
+    // 更新服务端的当前版本，确保刷新后保持
+    try {
+      await fetchJson<{ success: boolean }>("/api/user-theme/current", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ version: trimmed })
+      });
+    } catch (error) {
+      console.error("Failed to update server current version:", error);
+      // 不抛出错误，客户端已切换成功
+    }
+    
     await refreshVersions();
   }, [applyVersion, currentVersion, refreshVersions]);
-  const revertToOfficial = useCallback((): void => {
+  const revertToOfficial = useCallback(async (): Promise<void> => {
     removeAllUserThemeStyles();
     setBodyThemeClass(false);
     setCurrentVersion(null);
-    void cssCache.setCurrentVersion(null);
+    await cssCache.setCurrentVersion(null);
+    
+    // 更新服务端的当前版本为 null
+    try {
+      await fetchJson<{ success: boolean }>("/api/user-theme/current", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ version: null })
+      });
+    } catch (error) {
+      console.error("Failed to update server current version:", error);
+    }
   }, []);
   const getThemeHistory = useCallback(async (): Promise<UserCssRecord[]> => {
     return await cssCache.getHistory();

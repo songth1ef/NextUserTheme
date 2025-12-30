@@ -189,3 +189,39 @@ export async function getCurrentUserTheme(userId: string): Promise<{ record: Use
   return { record, css };
 }
 
+export async function setCurrentUserThemeVersion(userId: string, version: string | null): Promise<boolean> {
+  await ensureUserDir(userId);
+  const manifestPath = getManifestPath(userId);
+  const manifest = (await readJsonFile<UserThemeManifest>(manifestPath)) ?? getEmptyManifest();
+  
+  // 如果设置为 null，直接更新
+  if (version === null) {
+    const nextManifest: UserThemeManifest = { ...manifest, currentVersion: null };
+    await writeJsonFile(manifestPath, nextManifest);
+    return true;
+  }
+  
+  // 验证版本是否存在
+  const versionExists = manifest.versions.some((v) => v.version === version);
+  if (!versionExists) {
+    // 尝试从文件系统读取，可能版本存在但不在 manifest 中
+    const record = await readJsonFile<UserCssRecord>(getRecordPath(userId, version));
+    if (!record) return false;
+    
+    // 添加到 versions 列表
+    const nextVersions = [
+      ...manifest.versions.filter((v) => v.version !== version),
+      { version, hash: record.hash, createdAt: record.createdAt }
+    ].sort((a, b) => b.createdAt - a.createdAt);
+    
+    const nextManifest: UserThemeManifest = { currentVersion: version, versions: nextVersions };
+    await writeJsonFile(manifestPath, nextManifest);
+    return true;
+  }
+  
+  // 更新当前版本
+  const nextManifest: UserThemeManifest = { ...manifest, currentVersion: version };
+  await writeJsonFile(manifestPath, nextManifest);
+  return true;
+}
+
