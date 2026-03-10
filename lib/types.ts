@@ -1,3 +1,5 @@
+export type ColorMode = "light" | "dark" | "system";
+
 export type ValidationErrorType = "selector" | "property" | "at-rule" | "other";
 
 export interface ValidationError {

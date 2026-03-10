@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react";
 import { useTheme } from "@/components/ThemeProvider";
 import { useI18n } from "@/components/I18nProvider";
+import { useColorMode } from "@/components/ColorModeProvider";
 
 interface SubmitThemeResponse {
   readonly success: boolean;
@@ -14,11 +15,18 @@ interface SubmitThemeResponse {
 
 type SubmitErrors = ReadonlyArray<{ readonly type: string; readonly message: string; readonly line?: number; readonly column?: number }> | null;
 
-const exampleCss = `:root {
-  /* 主题色：红色系 */
+const exampleCss = `/* 红色主题 - 暗色 */
+html[data-color-mode="dark"] {
   --color-primary: #ff4d4f;
   --color-surface: #1a1a2e;
   --color-border: rgba(255, 77, 79, 0.3);
+}
+
+/* 红色主题 - 亮色 */
+html[data-color-mode="light"] {
+  --color-primary: #dc2626;
+  --color-surface: #fef2f2;
+  --color-border: rgba(220, 38, 38, 0.2);
 }
 
 /* 按钮样式 */
@@ -80,10 +88,16 @@ const exampleCss = `:root {
 `;
 
 const presetCss = {
-  green: `:root {
+  green: `html[data-color-mode="dark"] {
   --color-primary: #10b981;
   --color-surface: #064e3b;
   --color-border: rgba(16, 185, 129, 0.3);
+}
+
+html[data-color-mode="light"] {
+  --color-primary: #059669;
+  --color-surface: #ecfdf5;
+  --color-border: rgba(5, 150, 105, 0.2);
 }
 
 .user-theme .theme-button-primary {
@@ -99,10 +113,16 @@ const presetCss = {
 .user-theme a {
   color: var(--color-primary);
 }`,
-  purple: `:root {
+  purple: `html[data-color-mode="dark"] {
   --color-primary: #8b5cf6;
   --color-surface: #3b1f5e;
   --color-border: rgba(139, 92, 246, 0.3);
+}
+
+html[data-color-mode="light"] {
+  --color-primary: #7c3aed;
+  --color-surface: #f5f3ff;
+  --color-border: rgba(124, 58, 237, 0.2);
 }
 
 .user-theme .theme-button-primary {
@@ -118,10 +138,16 @@ const presetCss = {
 .user-theme a {
   color: var(--color-primary);
 }`,
-  orange: `:root {
+  orange: `html[data-color-mode="dark"] {
   --color-primary: #f59e0b;
   --color-surface: #78350f;
   --color-border: rgba(245, 158, 11, 0.3);
+}
+
+html[data-color-mode="light"] {
+  --color-primary: #d97706;
+  --color-surface: #fffbeb;
+  --color-border: rgba(217, 119, 6, 0.2);
 }
 
 .user-theme .theme-button-primary {
@@ -148,6 +174,7 @@ const formatTime = (ts: number): string => {
 export function ThemeSwitcher() {
   const theme = useTheme();
   const { t } = useI18n();
+  const { colorMode, setColorMode } = useColorMode();
   const [selectedVersion, setSelectedVersion] = useState<string>("");
   const [source, setSource] = useState<"upload" | "ai">("ai");
   const [css, setCss] = useState<string>(exampleCss);
@@ -243,6 +270,26 @@ export function ThemeSwitcher() {
         <span className="status-text">{theme.isLoading ? t("theme.loading") : t("theme.ready")}</span>
         <button className="btn btn-sm" onClick={() => void theme.refreshTheme()}>{t("theme.refresh")}</button>
         <button className="btn btn-sm" onClick={() => void theme.revertToOfficial()}>{t("theme.revertOfficial")}</button>
+        <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
+          <button
+            className={`btn btn-sm ${colorMode === "light" ? "btn-primary" : ""}`}
+            onClick={() => void setColorMode("light")}
+          >
+            {t("colorMode.light")}
+          </button>
+          <button
+            className={`btn btn-sm ${colorMode === "dark" ? "btn-primary" : ""}`}
+            onClick={() => void setColorMode("dark")}
+          >
+            {t("colorMode.dark")}
+          </button>
+          <button
+            className={`btn btn-sm ${colorMode === "system" ? "btn-primary" : ""}`}
+            onClick={() => void setColorMode("system")}
+          >
+            {t("colorMode.system")}
+          </button>
+        </div>
       </div>
 
       {/* 错误提示 */}

@@ -27,12 +27,17 @@
   "theme.uploadFile": "上传文件",
   "theme.versionName": "版本名称",
   "theme.versionNamePlaceholder": "例如：深海蓝 v2、节日红...",
-  "theme.cssConstraint": "只允许 :root 与 .user-theme 作用域；禁止 @import、@font-face、position: fixed、z-index > 1000、url() 等。",
+  "theme.cssConstraint": "允许 :root、html[data-color-mode=\"light\"]、html[data-color-mode=\"dark\"] 与 .user-theme 作用域；禁止 @import、@font-face、position: fixed、z-index > 1000、url() 等。",
   "theme.submitAndApply": "提交并应用",
   "theme.submitSuccess": "提交成功",
   "theme.submitFailed": "提交失败：{status}",
   "theme.validationFailed": "校验失败",
   "theme.versionNameRequired": "请填写版本名称",
+
+  "colorMode.title": "色彩模式",
+  "colorMode.light": "亮色",
+  "colorMode.dark": "暗色",
+  "colorMode.system": "跟随系统",
 
   "theme.presetGreen": "绿色主题",
   "theme.presetPurple": "紫色主题",

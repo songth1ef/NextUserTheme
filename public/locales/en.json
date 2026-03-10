@@ -27,12 +27,17 @@
   "theme.uploadFile": "Upload File",
   "theme.versionName": "Version Name",
   "theme.versionNamePlaceholder": "e.g. Deep Blue v2, Holiday Red...",
-  "theme.cssConstraint": "Only :root and .user-theme scopes allowed; @import, @font-face, position: fixed, z-index > 1000, url() etc. are forbidden.",
+  "theme.cssConstraint": "Allowed scopes: :root, html[data-color-mode=\"light\"], html[data-color-mode=\"dark\"], .user-theme. @import, @font-face, position: fixed, z-index > 1000, url() etc. are forbidden.",
   "theme.submitAndApply": "Submit & Apply",
   "theme.submitSuccess": "Submitted Successfully",
   "theme.submitFailed": "Submit failed: {status}",
   "theme.validationFailed": "Validation Failed",
   "theme.versionNameRequired": "Please enter a version name",
+
+  "colorMode.title": "Color Mode",
+  "colorMode.light": "Light",
+  "colorMode.dark": "Dark",
+  "colorMode.system": "System",
 
   "theme.presetGreen": "Green Theme",
   "theme.presetPurple": "Purple Theme",

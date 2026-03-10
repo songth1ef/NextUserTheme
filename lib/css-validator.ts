@@ -30,6 +30,8 @@ const isAllowedSelector = (rawSelector: string): boolean => {
   if (selector.length === 0) return false;
   if (/^:root\s*$/i.test(selector)) return true;
   if (/^\.user-theme(\s|$)/i.test(selector)) return true;
+  if (/^html\[data-color-mode=["'](light|dark)["']\]\s*$/i.test(selector)) return true;
+  if (/^:root\[data-color-mode=["'](light|dark)["']\]\s*$/i.test(selector)) return true;
   return false;
 };
 
@@ -127,7 +129,7 @@ export function validateUserCss(cssText: string): ValidationResult {
       }
       if (!isAllowedSelector(selector)) {
         const loc = getNodeLocation(rule);
-        errors.push(toError({ type: "selector", message: `只允许 :root 或 .user-theme 作用域选择器（当前：${selector}）`, line: loc.line, column: loc.column }));
+        errors.push(toError({ type: "selector", message: `只允许 :root、html[data-color-mode="light|dark"] 或 .user-theme 作用域选择器（当前：${selector}）`, line: loc.line, column: loc.column }));
       }
     }
   });

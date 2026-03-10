@@ -1,4 +1,13 @@
+/* ─── Shared Variables (mode-independent) ────────────── */
 :root {
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --spacing: 12px;
+}
+
+/* ─── Dark Mode ──────────────────────────────────────── */
+html[data-color-mode="dark"] {
   --color-bg: #0b1020;
   --color-surface: #111a33;
   --color-surface-hover: #162040;
@@ -9,11 +18,30 @@
   --color-border: rgba(233, 236, 255, 0.10);
   --color-success: #34d399;
   --color-danger: #f87171;
-  --radius: 12px;
-  --radius-sm: 8px;
-  --radius-lg: 16px;
-  --spacing: 12px;
+  --color-overlay-subtle: rgba(255, 255, 255, 0.04);
+  --color-overlay-hover: rgba(255, 255, 255, 0.08);
+  --color-overlay-active: rgba(255, 255, 255, 0.12);
+  --color-shadow: rgba(0, 0, 0, 0.2);
   color-scheme: dark;
+}
+
+/* ─── Light Mode ─────────────────────────────────────── */
+html[data-color-mode="light"] {
+  --color-bg: #f8f9fc;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f0f1f5;
+  --color-text: #1a1a2e;
+  --color-muted: rgba(26, 26, 46, 0.55);
+  --color-primary: #4a8af4;
+  --color-primary-hover: #3a7ae4;
+  --color-border: rgba(26, 26, 46, 0.12);
+  --color-success: #059669;
+  --color-danger: #dc2626;
+  --color-overlay-subtle: rgba(0, 0, 0, 0.02);
+  --color-overlay-hover: rgba(0, 0, 0, 0.05);
+  --color-overlay-active: rgba(0, 0, 0, 0.08);
+  --color-shadow: rgba(0, 0, 0, 0.08);
+  color-scheme: light;
 }
 
 /* ─── Reset ───────────────────────────────────────────── */
@@ -41,7 +69,7 @@ a:hover {
 }
 
 code {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--color-overlay-hover);
   padding: 2px 7px;
   border-radius: 5px;
   font-size: 0.85em;
@@ -170,7 +198,7 @@ code {
   padding: 8px 16px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--color-overlay-subtle);
   color: var(--color-text);
   font-size: 13px;
   font-weight: 500;
@@ -179,8 +207,8 @@ code {
   white-space: nowrap;
 }
 .btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: var(--color-overlay-hover);
+  border-color: var(--color-overlay-active);
 }
 .btn:active {
   transform: scale(0.97);
@@ -219,7 +247,7 @@ code {
   padding: 9px 12px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--color-overlay-subtle);
   color: var(--color-text);
   font-size: 13px;
   outline: none;
@@ -252,7 +280,7 @@ code {
   padding: 5px 12px;
   border-radius: 6px;
   border: 1px solid var(--color-border);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--color-overlay-subtle);
   color: var(--color-text);
   font-size: 12px;
   cursor: pointer;
@@ -260,7 +288,7 @@ code {
   transition: background 0.15s;
 }
 .form-file::file-selector-button:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--color-overlay-hover);
 }
 
 /* ─── Radio Group ─────────────────────────────────────── */
@@ -297,7 +325,7 @@ code {
   padding: 5px 14px;
   border-radius: 999px;
   border: 1px solid var(--color-border);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--color-overlay-subtle);
   color: var(--color-text);
   font-size: 12px;
   font-weight: 500;
@@ -305,8 +333,8 @@ code {
   transition: all 0.15s ease;
 }
 .preset-chip:hover {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: var(--color-overlay-hover);
+  border-color: var(--color-overlay-active);
 }
 .preset-chip::before {
   content: "";
@@ -397,7 +425,7 @@ code {
 .theme-button-primary:hover {
   filter: brightness(1.1);
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(106, 168, 255, 0.25);
+  box-shadow: 0 4px 14px var(--color-shadow);
 }
 .theme-button-primary:active {
   transform: translateY(0);
@@ -416,7 +444,7 @@ code {
 }
 .theme-button-secondary:hover {
   background: var(--color-surface-hover);
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: var(--color-overlay-active);
 }
 
 .theme-button-outline {
@@ -450,9 +478,9 @@ code {
   transition: all 0.2s ease;
 }
 .theme-card:hover {
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: var(--color-overlay-active);
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 24px var(--color-shadow);
 }
 
 .theme-card-title {
@@ -582,5 +610,5 @@ code {
   padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid var(--color-border);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--color-overlay-subtle);
 }

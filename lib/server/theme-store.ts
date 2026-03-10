@@ -1,10 +1,11 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { computeSha256Hex } from "@/lib/css-hash";
-import type { UserCssRecord, VersionInfo } from "@/lib/types";
+import type { ColorMode, UserCssRecord, VersionInfo } from "@/lib/types";
 
 interface UserThemeManifest {
   readonly currentVersion: string | null;
+  readonly colorMode?: ColorMode;
   readonly versions: ReadonlyArray<{ readonly version: string; readonly versionName: string; readonly hash: string; readonly createdAt: number }>;
 }
 
@@ -220,6 +221,19 @@ export async function getUserThemeCss(userId: string, version: string): Promise<
   } catch {
     return null;
   }
+}
+
+export async function getColorMode(userId: string): Promise<ColorMode> {
+  await ensureUserDir(userId);
+  const manifest = (await readJsonFile<UserThemeManifest>(getManifestPath(userId))) ?? getEmptyManifest();
+  return manifest.colorMode ?? "dark";
+}
+
+export async function setColorMode(userId: string, mode: ColorMode): Promise<void> {
+  await ensureUserDir(userId);
+  const manifestPath = getManifestPath(userId);
+  const manifest = (await readJsonFile<UserThemeManifest>(manifestPath)) ?? getEmptyManifest();
+  await writeJsonFile(manifestPath, { ...manifest, colorMode: mode });
 }
 
 export async function getCurrentUserTheme(userId: string): Promise<{ record: UserCssRecord; css: string } | null> {

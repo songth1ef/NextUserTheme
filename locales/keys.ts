@@ -40,6 +40,12 @@ export const i18nKeys: readonly I18nKeyDefinition[] = [
   { key: "theme.validationFailed", description: "校验失败消息", category: "theme" },
   { key: "theme.versionNameRequired", description: "版本名称必填提示", category: "theme" },
 
+  // Color mode
+  { key: "colorMode.title", description: "色彩模式标题", category: "theme" },
+  { key: "colorMode.light", description: "亮色模式", category: "theme" },
+  { key: "colorMode.dark", description: "暗色模式", category: "theme" },
+  { key: "colorMode.system", description: "跟随系统模式", category: "theme" },
+
   // Presets
   { key: "theme.presetGreen", description: "绿色预设名称", category: "theme" },
   { key: "theme.presetPurple", description: "紫色预设名称", category: "theme" },
