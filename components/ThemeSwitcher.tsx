@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { useTheme } from "@/components/ThemeProvider";
+import { useI18n } from "@/components/I18nProvider";
 
 interface SubmitThemeResponse {
   readonly success: boolean;
@@ -78,11 +79,8 @@ const exampleCss = `:root {
 }
 `;
 
-const presets = [
-  {
-    label: "绿色主题",
-    color: "green" as const,
-    css: `:root {
+const presetCss = {
+  green: `:root {
   --color-primary: #10b981;
   --color-surface: #064e3b;
   --color-border: rgba(16, 185, 129, 0.3);
@@ -100,12 +98,8 @@ const presets = [
 
 .user-theme a {
   color: var(--color-primary);
-}`
-  },
-  {
-    label: "紫色主题",
-    color: "purple" as const,
-    css: `:root {
+}`,
+  purple: `:root {
   --color-primary: #8b5cf6;
   --color-surface: #3b1f5e;
   --color-border: rgba(139, 92, 246, 0.3);
@@ -123,12 +117,8 @@ const presets = [
 
 .user-theme a {
   color: var(--color-primary);
-}`
-  },
-  {
-    label: "橙色主题",
-    color: "orange" as const,
-    css: `:root {
+}`,
+  orange: `:root {
   --color-primary: #f59e0b;
   --color-surface: #78350f;
   --color-border: rgba(245, 158, 11, 0.3);
@@ -146,14 +136,9 @@ const presets = [
 
 .user-theme a {
   color: var(--color-primary);
-}`
-  },
-  {
-    label: "红色主题",
-    color: "red" as const,
-    css: exampleCss
-  }
-];
+}`,
+  red: exampleCss,
+};
 
 const formatTime = (ts: number): string => {
   const d = new Date(ts);
@@ -162,6 +147,7 @@ const formatTime = (ts: number): string => {
 
 export function ThemeSwitcher() {
   const theme = useTheme();
+  const { t } = useI18n();
   const [selectedVersion, setSelectedVersion] = useState<string>("");
   const [source, setSource] = useState<"upload" | "ai">("ai");
   const [css, setCss] = useState<string>(exampleCss);
@@ -175,6 +161,13 @@ export function ThemeSwitcher() {
     return theme.versionDetails.slice().sort((a, b) => b.createdAt - a.createdAt);
   }, [theme.versionDetails]);
 
+  const presets = useMemo(() => [
+    { label: t("theme.presetGreen"), color: "green" as const, css: presetCss.green },
+    { label: t("theme.presetPurple"), color: "purple" as const, css: presetCss.purple },
+    { label: t("theme.presetOrange"), color: "orange" as const, css: presetCss.orange },
+    { label: t("theme.presetRed"), color: "red" as const, css: presetCss.red },
+  ], [t]);
+
   const onPickFile = async (file: File | null): Promise<void> => {
     if (!file) return;
     const text = await file.text();
@@ -184,7 +177,7 @@ export function ThemeSwitcher() {
 
   const onSubmit = async (): Promise<void> => {
     if (!versionName.trim()) {
-      setSubmitErrors([{ type: "validation", message: "请填写版本名称" }]);
+      setSubmitErrors([{ type: "validation", message: t("theme.versionNameRequired") }]);
       return;
     }
     setSubmitErrors(null);
@@ -196,11 +189,11 @@ export function ThemeSwitcher() {
     });
     const json = (await res.json().catch(() => null)) as SubmitThemeResponse | null;
     if (!json) {
-      setSubmitErrors([{ type: "other", message: `提交失败：${res.status}` }]);
+      setSubmitErrors([{ type: "other", message: t("theme.submitFailed", { status: String(res.status) }) }]);
       return;
     }
     if (!res.ok || !json.success) {
-      setSubmitErrors(json.errors ?? [{ type: "other", message: `提交失败：${res.status}` }]);
+      setSubmitErrors(json.errors ?? [{ type: "other", message: t("theme.submitFailed", { status: String(res.status) }) }]);
       return;
     }
     setSubmitResult({ version: json.version ?? "", hash: json.hash ?? "" });
@@ -239,40 +232,40 @@ export function ThemeSwitcher() {
       {/* 状态栏 */}
       <div className="status-bar">
         <span className="status-badge">
-          <strong>当前主题</strong>
-          {theme.currentVersion ?? "官方主题"}
+          <strong>{t("theme.currentTheme")}</strong>
+          {theme.currentVersion ?? t("theme.officialTheme")}
         </span>
         {theme.lastApplyTimeMs !== null ? (
           <span className="status-badge" style={{ background: "rgba(52,211,153,0.1)", color: "var(--color-success)", borderColor: "rgba(52,211,153,0.15)" }}>
             {theme.lastApplyTimeMs} ms
           </span>
         ) : null}
-        <span className="status-text">{theme.isLoading ? "加载中…" : "就绪"}</span>
-        <button className="btn btn-sm" onClick={() => void theme.refreshTheme()}>刷新</button>
-        <button className="btn btn-sm" onClick={() => void theme.revertToOfficial()}>回退官方</button>
+        <span className="status-text">{theme.isLoading ? t("theme.loading") : t("theme.ready")}</span>
+        <button className="btn btn-sm" onClick={() => void theme.refreshTheme()}>{t("theme.refresh")}</button>
+        <button className="btn btn-sm" onClick={() => void theme.revertToOfficial()}>{t("theme.revertOfficial")}</button>
       </div>
 
       {/* 错误提示 */}
       {theme.error ? (
         <div className="msg msg-error">
-          <strong>错误</strong>
+          <strong>{t("theme.error")}</strong>
           <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{theme.error.message}</div>
         </div>
       ) : null}
 
       {/* 版本管理 */}
       <div className="panel">
-        <h3 className="panel-title">版本管理</h3>
+        <h3 className="panel-title">{t("theme.versionManagement")}</h3>
 
         {/* 快捷切换 */}
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <select className="form-select" value={selectedVersion} onChange={(e) => setSelectedVersion(e.target.value)}>
-            <option value="">选择版本…</option>
+            <option value="">{t("theme.selectVersion")}</option>
             {versions.map((v) => (
               <option key={v.version} value={v.version}>{v.versionName} ({v.version.slice(-12)})</option>
             ))}
           </select>
-          <button className="btn btn-primary" onClick={() => void onSwitch()}>切换</button>
+          <button className="btn btn-primary" onClick={() => void onSwitch()}>{t("theme.switch")}</button>
         </div>
 
         {/* 版本列表 */}
@@ -307,14 +300,14 @@ export function ThemeSwitcher() {
                         style={{ padding: "4px 8px", fontSize: 13, width: 160 }}
                         autoFocus
                       />
-                      <button className="btn btn-sm btn-primary" onClick={() => void onRenameConfirm()}>确定</button>
-                      <button className="btn btn-sm" onClick={onRenameCancel}>取消</button>
+                      <button className="btn btn-sm btn-primary" onClick={() => void onRenameConfirm()}>{t("theme.confirm")}</button>
+                      <button className="btn btn-sm" onClick={onRenameCancel}>{t("theme.cancel")}</button>
                     </div>
                   ) : (
                     <span style={{ fontWeight: 500, fontSize: 13 }}>
                       {v.versionName}
                       {theme.currentVersion === v.version ? (
-                        <span style={{ marginLeft: 6, fontSize: 11, color: "var(--color-primary)", opacity: 0.8 }}>(当前)</span>
+                        <span style={{ marginLeft: 6, fontSize: 11, color: "var(--color-primary)", opacity: 0.8 }}>({t("theme.current")})</span>
                       ) : null}
                     </span>
                   )}
@@ -329,34 +322,34 @@ export function ThemeSwitcher() {
                 {/* 操作 */}
                 {editingVersion !== v.version ? (
                   <div style={{ display: "flex", gap: 4 }}>
-                    <button className="btn btn-sm" onClick={() => void theme.switchTheme(v.version)}>应用</button>
-                    <button className="btn btn-sm" onClick={() => onRenameStart(v.version, v.versionName)}>重命名</button>
-                    <button className="btn btn-sm" style={{ color: "var(--color-danger)" }} onClick={() => void onDelete(v.version)}>删除</button>
+                    <button className="btn btn-sm" onClick={() => void theme.switchTheme(v.version)}>{t("theme.apply")}</button>
+                    <button className="btn btn-sm" onClick={() => onRenameStart(v.version, v.versionName)}>{t("theme.rename")}</button>
+                    <button className="btn btn-sm" style={{ color: "var(--color-danger)" }} onClick={() => void onDelete(v.version)}>{t("theme.delete")}</button>
                   </div>
                 ) : null}
               </div>
             ))}
           </div>
         ) : (
-          <p className="panel-hint">暂无版本，请提交自定义 CSS 创建。</p>
+          <p className="panel-hint">{t("theme.noVersions")}</p>
         )}
 
-        <p className="panel-hint">优先 IndexedDB 命中，未命中才请求网络。</p>
+        <p className="panel-hint">{t("theme.cacheHint")}</p>
       </div>
 
       {/* 提交自定义 CSS */}
       <div className="panel">
-        <h3 className="panel-title">提交自定义 CSS</h3>
+        <h3 className="panel-title">{t("theme.submitCSS")}</h3>
 
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
           <div className="radio-group">
             <label className="radio-label">
               <input type="radio" name="source" checked={source === "ai"} onChange={() => setSource("ai")} />
-              AI 生成
+              {t("theme.aiGenerated")}
             </label>
             <label className="radio-label">
               <input type="radio" name="source" checked={source === "upload"} onChange={() => setSource("upload")} />
-              上传文件
+              {t("theme.uploadFile")}
             </label>
           </div>
           <input className="form-file" type="file" accept=".css,text/css" onChange={(e) => void onPickFile(e.target.files?.[0] ?? null)} />
@@ -365,12 +358,12 @@ export function ThemeSwitcher() {
         {/* 版本名称 */}
         <div style={{ display: "grid", gap: 6 }}>
           <label style={{ fontSize: 13, fontWeight: 500 }}>
-            版本名称 <span style={{ color: "var(--color-danger, #f87171)" }}>*</span>
+            {t("theme.versionName")} <span style={{ color: "var(--color-danger, #f87171)" }}>*</span>
           </label>
           <input
             className="form-input"
             type="text"
-            placeholder="例如：深海蓝 v2、节日红..."
+            placeholder={t("theme.versionNamePlaceholder")}
             value={versionName}
             onChange={(e) => setVersionName(e.target.value)}
             style={{ maxWidth: 360 }}
@@ -400,14 +393,14 @@ export function ThemeSwitcher() {
         />
 
         <p className="panel-hint">
-          只允许 <code>:root</code> 与 <code>.user-theme</code> 作用域；禁止 <code>@import</code>、<code>@font-face</code>、<code>position: fixed</code>、<code>z-index &gt; 1000</code>、<code>url()</code> 等。
+          {t("theme.cssConstraint")}
         </p>
 
-        <button className="btn btn-primary" onClick={() => void onSubmit()}>提交并应用</button>
+        <button className="btn btn-primary" onClick={() => void onSubmit()}>{t("theme.submitAndApply")}</button>
 
         {submitResult ? (
           <div className="msg msg-success">
-            <strong>提交成功</strong>
+            <strong>{t("theme.submitSuccess")}</strong>
             <div style={{ marginTop: 4, fontSize: 13 }}>version: {submitResult.version}</div>
             <div style={{ fontSize: 13 }}>hash: {submitResult.hash}</div>
           </div>
@@ -415,7 +408,7 @@ export function ThemeSwitcher() {
 
         {submitErrors && submitErrors.length > 0 ? (
           <div className="msg msg-error">
-            <strong>校验失败</strong>
+            <strong>{t("theme.validationFailed")}</strong>
             <ul>
               {submitErrors.map((e, idx) => (
                 <li key={idx}>

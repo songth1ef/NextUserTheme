@@ -319,6 +319,7 @@ code {
 .preset-chip[data-color="purple"]::before { background: #8b5cf6; }
 .preset-chip[data-color="orange"]::before { background: #f59e0b; }
 .preset-chip[data-color="red"]::before    { background: #ff4d4f; }
+.preset-chip[data-color="blue"]::before   { background: #6aa8ff; }
 
 /* ─── Feedback Messages ───────────────────────────────── */
 .msg {
