@@ -14,9 +14,17 @@ export interface ValidationResult {
 
 export interface UserCssRecord {
   readonly version: string;
+  readonly versionName?: string;
   readonly css: string;
   readonly hash: string;
   readonly createdAt: number;
   readonly userId?: string;
+}
+
+export interface VersionInfo {
+  readonly version: string;
+  readonly versionName: string;
+  readonly hash: string;
+  readonly createdAt: number;
 }
 

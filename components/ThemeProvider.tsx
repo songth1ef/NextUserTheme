@@ -6,16 +6,20 @@ import { cssCache } from "@/lib/css-cache";
 import { computeSha256Hex } from "@/lib/css-hash";
 import { injectStyle, removeAllUserThemeStyles, removeStyle } from "@/lib/css-injector";
 import { validateUserCss } from "@/lib/css-validator";
-import type { UserCssRecord } from "@/lib/types";
+import type { UserCssRecord, VersionInfo } from "@/lib/types";
 
 interface ThemeContextValue {
   readonly currentVersion: string | null;
   readonly availableVersions: readonly string[];
+  readonly versionDetails: readonly VersionInfo[];
   readonly isLoading: boolean;
   readonly error: Error | null;
+  readonly lastApplyTimeMs: number | null;
   readonly switchTheme: (version: string) => Promise<void>;
   readonly revertToOfficial: () => Promise<void>;
   readonly refreshTheme: () => Promise<void>;
+  readonly deleteVersion: (version: string) => Promise<void>;
+  readonly renameVersion: (version: string, newName: string) => Promise<void>;
   readonly getThemeHistory: () => Promise<UserCssRecord[]>;
 }
 
@@ -61,13 +65,17 @@ interface UserInfoResponse {
 export function ThemeProvider(props: { readonly children: ReactNode; readonly initialVersion?: string | null }) {
   const [currentVersion, setCurrentVersion] = useState<string | null>(props.initialVersion ?? null);
   const [availableVersions, setAvailableVersions] = useState<string[]>([]);
+  const [versionDetails, setVersionDetails] = useState<VersionInfo[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
+  const [lastApplyTimeMs, setLastApplyTimeMs] = useState<number | null>(null);
   const requestSeq = useRef<number>(0);
   const applyVersion = useCallback(async (input: { version: string; expectedHash?: string; cssUrl?: string; preferSsr?: boolean }): Promise<void> => {
     const seq = ++requestSeq.current;
+    const startTime = performance.now();
     setIsLoading(true);
     setError(null);
+    setLastApplyTimeMs(null);
     const styleId = `user-theme-${input.version}`;
     const done = async (css: string, hash: string): Promise<void> => {
       if (requestSeq.current !== seq) return;
@@ -77,6 +85,8 @@ export function ThemeProvider(props: { readonly children: ReactNode; readonly in
       injectStyle(styleId, css);
       setBodyThemeClass(true);
       setCurrentVersion(input.version);
+      const elapsed = performance.now() - startTime;
+      setLastApplyTimeMs(Math.round(elapsed * 100) / 100);
     };
     try {
       if (input.preferSsr) {
@@ -115,12 +125,14 @@ export function ThemeProvider(props: { readonly children: ReactNode; readonly in
   }, []);
   const refreshVersions = useCallback(async (): Promise<void> => {
     const [server, local] = await Promise.all([
-      fetchJson<{ versions: string[] }>("/api/user-theme/versions").catch(() => ({ versions: [] })),
+      fetchJson<{ versions: VersionInfo[] }>("/api/user-theme/versions").catch(() => ({ versions: [] as VersionInfo[] })),
       cssCache.getAllVersions().catch(() => [])
     ]);
-    const merged = Array.from(new Set([...(server.versions ?? []), ...local])).filter((v) => typeof v === "string" && v.length > 0);
+    const serverVersionIds = (server.versions ?? []).map((v) => v.version);
+    const merged = Array.from(new Set([...serverVersionIds, ...local])).filter((v) => typeof v === "string" && v.length > 0);
     merged.sort();
     setAvailableVersions(merged);
+    setVersionDetails(server.versions ?? []);
   }, []);
   const refreshTheme = useCallback(async (): Promise<void> => {
     const userInfo = await fetchJson<UserInfoResponse>("/api/user/info", { cache: "no-store" });
@@ -179,12 +191,31 @@ export function ThemeProvider(props: { readonly children: ReactNode; readonly in
       console.error("Failed to update server current version:", error);
     }
   }, []);
+  const deleteVersion = useCallback(async (version: string): Promise<void> => {
+    await fetchJson<{ success: boolean }>(`/api/user-theme/${encodeURIComponent(version)}`, { method: "DELETE" });
+    await cssCache.deleteCss(version);
+    if (currentVersion === version) {
+      removeAllUserThemeStyles();
+      setBodyThemeClass(false);
+      setCurrentVersion(null);
+      await cssCache.setCurrentVersion(null);
+    }
+    await refreshVersions();
+  }, [currentVersion, refreshVersions]);
+  const renameVersion = useCallback(async (version: string, newName: string): Promise<void> => {
+    await fetchJson<{ success: boolean }>(`/api/user-theme/${encodeURIComponent(version)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ versionName: newName })
+    });
+    await refreshVersions();
+  }, [refreshVersions]);
   const getThemeHistory = useCallback(async (): Promise<UserCssRecord[]> => {
     return await cssCache.getHistory();
   }, []);
   const value = useMemo<ThemeContextValue>(() => {
-    return { currentVersion, availableVersions, isLoading, error, switchTheme, revertToOfficial, refreshTheme, getThemeHistory };
-  }, [availableVersions, currentVersion, error, getThemeHistory, isLoading, refreshTheme, revertToOfficial, switchTheme]);
+    return { currentVersion, availableVersions, versionDetails, isLoading, error, lastApplyTimeMs, switchTheme, revertToOfficial, refreshTheme, deleteVersion, renameVersion, getThemeHistory };
+  }, [availableVersions, versionDetails, currentVersion, error, lastApplyTimeMs, getThemeHistory, isLoading, refreshTheme, revertToOfficial, switchTheme, deleteVersion, renameVersion]);
   return <ThemeContext.Provider value={value}>{props.children}</ThemeContext.Provider>;
 }
 

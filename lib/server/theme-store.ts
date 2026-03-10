@@ -1,11 +1,11 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { computeSha256Hex } from "@/lib/css-hash";
-import type { UserCssRecord } from "@/lib/types";
+import type { UserCssRecord, VersionInfo } from "@/lib/types";
 
 interface UserThemeManifest {
   readonly currentVersion: string | null;
-  readonly versions: ReadonlyArray<{ readonly version: string; readonly hash: string; readonly createdAt: number }>;
+  readonly versions: ReadonlyArray<{ readonly version: string; readonly versionName: string; readonly hash: string; readonly createdAt: number }>;
 }
 
 interface ThemeCacheEntry {
@@ -90,6 +90,7 @@ const setCache = (userId: string, version: string, css: string, record: UserCssR
 export interface SaveUserThemeInput {
   readonly userId: string;
   readonly css: string;
+  readonly versionName: string;
 }
 
 export interface SaveUserThemeResult {
@@ -104,12 +105,13 @@ export async function saveUserTheme(input: SaveUserThemeInput): Promise<SaveUser
   const createdAt = Date.now();
   const hash = computeSha256Hex(css);
   const version = `${sanitizeSegment(input.userId)}-${hash.slice(0, 12)}`;
-  const record: UserCssRecord = { version, css, hash, createdAt, userId: input.userId };
+  const versionName = input.versionName;
+  const record: UserCssRecord = { version, versionName, css, hash, createdAt, userId: input.userId };
   const manifestPath = getManifestPath(input.userId);
   const manifest = (await readJsonFile<UserThemeManifest>(manifestPath)) ?? getEmptyManifest();
   const nextVersions = [
     ...manifest.versions.filter((v) => v.version !== version),
-    { version, hash, createdAt }
+    { version, versionName, hash, createdAt }
   ].sort((a, b) => b.createdAt - a.createdAt);
   const nextManifest: UserThemeManifest = { currentVersion: version, versions: nextVersions };
   await fs.writeFile(getCssPath(input.userId, version), css, "utf8");
@@ -147,6 +149,52 @@ export async function listUserThemeVersions(userId: string): Promise<string[]> {
   await ensureUserDir(userId);
   const manifest = (await readJsonFile<UserThemeManifest>(getManifestPath(userId))) ?? getEmptyManifest();
   return manifest.versions.map((v) => v.version);
+}
+
+export async function listUserThemeVersionsDetailed(userId: string): Promise<VersionInfo[]> {
+  await ensureUserDir(userId);
+  const manifest = (await readJsonFile<UserThemeManifest>(getManifestPath(userId))) ?? getEmptyManifest();
+  return manifest.versions.map((v) => ({
+    version: v.version,
+    versionName: v.versionName ?? v.version,
+    hash: v.hash,
+    createdAt: v.createdAt
+  }));
+}
+
+export async function deleteUserThemeVersion(userId: string, version: string): Promise<boolean> {
+  await ensureUserDir(userId);
+  const manifestPath = getManifestPath(userId);
+  const manifest = (await readJsonFile<UserThemeManifest>(manifestPath)) ?? getEmptyManifest();
+  const exists = manifest.versions.some((v) => v.version === version);
+  if (!exists) return false;
+  const nextVersions = manifest.versions.filter((v) => v.version !== version);
+  const nextCurrent = manifest.currentVersion === version ? null : manifest.currentVersion;
+  await writeJsonFile(manifestPath, { currentVersion: nextCurrent, versions: nextVersions });
+  // 删除文件
+  try { await fs.unlink(getCssPath(userId, version)); } catch { /* ignore */ }
+  try { await fs.unlink(getRecordPath(userId, version)); } catch { /* ignore */ }
+  serverCache.delete(getCacheKey(userId, version));
+  return true;
+}
+
+export async function renameUserThemeVersion(userId: string, version: string, newName: string): Promise<boolean> {
+  await ensureUserDir(userId);
+  const manifestPath = getManifestPath(userId);
+  const manifest = (await readJsonFile<UserThemeManifest>(manifestPath)) ?? getEmptyManifest();
+  const idx = manifest.versions.findIndex((v) => v.version === version);
+  if (idx === -1) return false;
+  const nextVersions = manifest.versions.map((v) =>
+    v.version === version ? { ...v, versionName: newName } : v
+  );
+  await writeJsonFile(manifestPath, { ...manifest, versions: nextVersions });
+  // 更新 record 文件
+  const recordPath = getRecordPath(userId, version);
+  const record = await readJsonFile<UserCssRecord>(recordPath);
+  if (record) {
+    await writeJsonFile(recordPath, { ...record, versionName: newName });
+  }
+  return true;
 }
 
 export async function getUserThemeRecord(userId: string, version: string): Promise<UserCssRecord | null> {
@@ -211,7 +259,7 @@ export async function setCurrentUserThemeVersion(userId: string, version: string
     // 添加到 versions 列表
     const nextVersions = [
       ...manifest.versions.filter((v) => v.version !== version),
-      { version, hash: record.hash, createdAt: record.createdAt }
+      { version, versionName: record.versionName ?? version, hash: record.hash, createdAt: record.createdAt }
     ].sort((a, b) => b.createdAt - a.createdAt);
     
     const nextManifest: UserThemeManifest = { currentVersion: version, versions: nextVersions };
