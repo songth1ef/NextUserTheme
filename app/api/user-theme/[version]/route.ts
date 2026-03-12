@@ -1,14 +1,11 @@
 import { getUserIdFromRequest } from "@/lib/server/user-session";
 import { getUserThemeCss, deleteUserThemeVersion, renameUserThemeVersion } from "@/lib/server/theme-store";
-
-const normalizeSegment = (input: string): string => {
-  return input.replace(/[^a-zA-Z0-9_-]/g, "_");
-};
+import { sanitizeSegment } from "@/lib/server/sanitize";
 
 export async function GET(request: Request, context: { params: { version: string } }): Promise<Response> {
   const userId = getUserIdFromRequest(request);
   const version = context.params.version;
-  const expectedPrefix = `${normalizeSegment(userId)}-`;
+  const expectedPrefix = `${sanitizeSegment(userId)}-`;
   if (!version.startsWith(expectedPrefix)) return new Response("Forbidden", { status: 403 });
   const css = await getUserThemeCss(userId, version);
   if (!css) return new Response("Not Found", { status: 404 });
@@ -18,7 +15,7 @@ export async function GET(request: Request, context: { params: { version: string
 export async function DELETE(request: Request, context: { params: { version: string } }): Promise<Response> {
   const userId = getUserIdFromRequest(request);
   const version = context.params.version;
-  const expectedPrefix = `${normalizeSegment(userId)}-`;
+  const expectedPrefix = `${sanitizeSegment(userId)}-`;
   if (!version.startsWith(expectedPrefix)) return Response.json({ success: false, message: "Forbidden" }, { status: 403 });
   const deleted = await deleteUserThemeVersion(userId, version);
   if (!deleted) return Response.json({ success: false, message: "Not Found" }, { status: 404 });
@@ -28,7 +25,7 @@ export async function DELETE(request: Request, context: { params: { version: str
 export async function PUT(request: Request, context: { params: { version: string } }): Promise<Response> {
   const userId = getUserIdFromRequest(request);
   const version = context.params.version;
-  const expectedPrefix = `${normalizeSegment(userId)}-`;
+  const expectedPrefix = `${sanitizeSegment(userId)}-`;
   if (!version.startsWith(expectedPrefix)) return Response.json({ success: false, message: "Forbidden" }, { status: 403 });
   const body = (await request.json().catch(() => null)) as { versionName?: unknown } | null;
   const versionName = typeof body?.versionName === "string" ? body.versionName.trim() : "";

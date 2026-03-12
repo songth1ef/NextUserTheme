@@ -5,6 +5,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { i18nCache } from "@/lib/i18n-cache";
 import { interpolate } from "@/lib/i18n-interpolate";
 import type { LocalePackInfo } from "@/lib/i18n-types";
+import { fetchJson } from "@/lib/fetch-json";
 
 interface I18nContextValue {
   readonly t: (key: string, params?: Record<string, string | number>) => string;
@@ -16,17 +17,6 @@ interface I18nContextValue {
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null);
-
-const fetchJson = async <T,>(url: string, init?: RequestInit): Promise<T> => {
-  const res = await fetch(url, init);
-  const json = (await res.json().catch(() => null)) as T | null;
-  if (!res.ok) {
-    const message = typeof (json as any)?.message === "string" ? String((json as any).message) : `Request failed: ${res.status}`;
-    throw new Error(message);
-  }
-  if (!json) throw new Error("Invalid JSON response");
-  return json;
-};
 
 interface I18nProviderProps {
   readonly children: ReactNode;

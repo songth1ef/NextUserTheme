@@ -7,7 +7,7 @@ const nextConfig = {
     // 开发环境需要更宽松的 CSP（React Refresh 和 webpack 需要）
     const scriptSrc = isDev
       ? "'self' 'unsafe-inline' 'unsafe-eval'" // 开发环境允许内联脚本和 eval
-      : "'self'"; // 生产环境严格限制
+      : "'self' 'unsafe-inline'"; // Next.js hydration 需要内联脚本
     
     return [
       {

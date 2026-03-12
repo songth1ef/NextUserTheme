@@ -2,7 +2,36 @@
   "permissions": {
     "allow": [
       "Bash(npx tsc:*)",
-      "Bash(npx next build)"
+      "Bash(npx next build)",
+      "Bash(cd \"D:/code/github/NextUserTheme\" && node -e \"const v = require\\('./node_modules/next/package.json'\\).version; console.log\\('next version:', v\\)\")",
+      "Bash(cd \"D:/code/github/NextUserTheme\" && node -e \"const os = require\\('os'\\); console.log\\('arch:', os.arch\\(\\), 'platform:', os.platform\\(\\), 'node:', process.version\\)\")",
+      "Bash(nvm list:*)",
+      "Bash(where node:*)",
+      "Bash(winget --version 2>/dev/null || echo \"winget not found\")",
+      "Bash(fnm --version 2>/dev/null || echo \"fnm not found\")",
+      "Bash(winget install:*)",
+      "Bash(export PATH=\"$PATH:/c/Users/15491/AppData/Local/Microsoft/WinGet/Packages/Schniz.fnm_Microsoft.Winget.Source_8wekyb3d8bbwe:/c/Program Files/fnm\" && fnm --version 2>/dev/null || echo \"not in standard path, trying direct\")",
+      "Bash(export PATH=\"$PATH:/c/Program Files/fnm\" && fnm install 20 2>&1)",
+      "Bash(FNM=\"/c/Users/15491/AppData/Local/Microsoft/WinGet/Packages/Schniz.fnm_Microsoft.Winget.Source_8wekyb3d8bbwe/fnm.exe\" && \"$FNM\" install 20 2>&1)",
+      "Bash(echo \"20\" > \"D:/code/github/NextUserTheme/.node-version\" && cat \"D:/code/github/NextUserTheme/.node-version\")",
+      "Bash(node -v && npm -v && where pm2 2>/dev/null || echo \"pm2 not found\")",
+      "Bash(ls D:/code/github/NextUserTheme/next.config* 2>/dev/null || echo \"no next.config found\")",
+      "Bash(npm install:*)",
+      "Bash(cd D:/code/github/NextUserTheme && npm run build 2>&1)",
+      "Bash(sleep 3 && pm2 logs nextusertheme --lines 20 --nostream)",
+      "Bash(pm2 delete:*)",
+      "Bash(cd D:/code/github/NextUserTheme && pm2 start ecosystem.config.cjs && sleep 4 && pm2 logs nextusertheme --lines 15 --nostream)",
+      "Bash(D:/nginx-1.28.2/nginx.exe -t -p D:/nginx-1.28.2/ 2>&1)",
+      "Bash(where nginx:*)",
+      "Bash(cd D:/code/github/NextUserTheme && pm2 start ecosystem.config.cjs && sleep 4 && pm2 logs nextusertheme --lines 10 --nostream)",
+      "Bash(pm2 restart:*)",
+      "Bash(pm2 logs:*)",
+      "Bash(cd D:/code/github/NextUserTheme && node -e \"\nconst { execSync } = require\\('child_process'\\);\n// Trigger a request to see the actual error\n\" 2>&1; curl -s http://localhost:20201 2>&1 | head -5)",
+      "Bash(curl -s http://localhost:20201 2>&1 | head -20)",
+      "Bash(NODE_ENV=production node -e \"\nprocess.chdir\\('D:/code/github/NextUserTheme'\\);\n// Test if components can be imported\ntry {\n  require\\('./components/LocaleManager'\\);\n  console.log\\('LocaleManager ok'\\);\n} catch\\(e\\) {\n  console.error\\('LocaleManager error:', e.message\\);\n}\n\" 2>&1)",
+      "Bash(curl -v http://localhost:20201 2>&1 | head -30)",
+      "Bash(ls D:/code/github/NextUserTheme/lib/i18n-types* D:/code/github/NextUserTheme/lib/i18n-cache* D:/code/github/NextUserTheme/lib/i18n-interpolate* 2>&1)",
+      "Bash(curl --noproxy \"*\" -s http://127.0.0.1:20201 2>&1 | head -50)"
     ]
   }
 }

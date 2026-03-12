@@ -22,7 +22,10 @@ const forbiddenAtRules: readonly string[] = [
   "namespace",
   "keyframes",
   "media",
-  "supports"
+  "supports",
+  "layer",     // @layer 可提升优先级覆盖全局样式
+  "container", // @container 查询可作用于任意元素
+  "scope",     // @scope 可绕过选择器作用域限制
 ];
 
 const isAllowedSelector = (rawSelector: string): boolean => {

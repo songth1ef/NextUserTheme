@@ -14,9 +14,14 @@ export async function POST(request: Request): Promise<Response> {
   if (!name) {
     return Response.json({ success: false, message: "name 不能为空" }, { status: 400 });
   }
-  const translations = body?.translations && typeof body.translations === "object" && !Array.isArray(body.translations)
-    ? body.translations as Record<string, string>
-    : undefined;
+  let translations: Record<string, string> | undefined;
+  if (body?.translations && typeof body.translations === "object" && !Array.isArray(body.translations)) {
+    // 过滤掉非 string 值，防止存储结构性数据或 prototype 污染
+    translations = {};
+    for (const [key, value] of Object.entries(body.translations as Record<string, unknown>)) {
+      if (typeof value === "string") translations[key] = value;
+    }
+  }
   const pack = await createLocalePack({ userId, name, translations });
   return Response.json({ success: true, pack });
 }

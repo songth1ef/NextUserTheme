@@ -1,14 +1,11 @@
 import { getUserIdFromRequest } from "@/lib/server/user-session";
 import { getLocalePack, updateLocalePack, deleteLocalePack } from "@/lib/server/locale-store";
-
-const normalizeSegment = (input: string): string => {
-  return input.replace(/[^a-zA-Z0-9_-]/g, "_");
-};
+import { sanitizeSegment } from "@/lib/server/sanitize";
 
 export async function GET(request: Request, context: { params: { packId: string } }): Promise<Response> {
   const userId = getUserIdFromRequest(request);
   const packId = context.params.packId;
-  const expectedPrefix = `${normalizeSegment(userId)}-`;
+  const expectedPrefix = `${sanitizeSegment(userId)}-`;
   if (!packId.startsWith(expectedPrefix)) {
     return Response.json({ success: false, message: "Forbidden" }, { status: 403 });
   }
@@ -22,7 +19,7 @@ export async function GET(request: Request, context: { params: { packId: string 
 export async function PUT(request: Request, context: { params: { packId: string } }): Promise<Response> {
   const userId = getUserIdFromRequest(request);
   const packId = context.params.packId;
-  const expectedPrefix = `${normalizeSegment(userId)}-`;
+  const expectedPrefix = `${sanitizeSegment(userId)}-`;
   if (!packId.startsWith(expectedPrefix)) {
     return Response.json({ success: false, message: "Forbidden" }, { status: 403 });
   }
@@ -32,7 +29,12 @@ export async function PUT(request: Request, context: { params: { packId: string 
     updates.name = body.name.trim();
   }
   if (body?.translations && typeof body.translations === "object" && !Array.isArray(body.translations)) {
-    updates.translations = body.translations as Record<string, string>;
+    // 逐值校验，过滤掉非 string 条目，防止存储非字符串数据
+    const validated: Record<string, string> = {};
+    for (const [k, v] of Object.entries(body.translations as Record<string, unknown>)) {
+      if (typeof v === "string") validated[k] = v;
+    }
+    updates.translations = validated;
   }
   if (!updates.name && !updates.translations) {
     return Response.json({ success: false, message: "无更新内容" }, { status: 400 });
@@ -47,7 +49,7 @@ export async function PUT(request: Request, context: { params: { packId: string 
 export async function DELETE(request: Request, context: { params: { packId: string } }): Promise<Response> {
   const userId = getUserIdFromRequest(request);
   const packId = context.params.packId;
-  const expectedPrefix = `${normalizeSegment(userId)}-`;
+  const expectedPrefix = `${sanitizeSegment(userId)}-`;
   if (!packId.startsWith(expectedPrefix)) {
     return Response.json({ success: false, message: "Forbidden" }, { status: 403 });
   }

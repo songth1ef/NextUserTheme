@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { computeSha256Hex } from "@/lib/css-hash";
+import { sanitizeSegment } from "@/lib/server/sanitize";
 import type { ColorMode, UserCssRecord, VersionInfo } from "@/lib/types";
 
 interface UserThemeManifest {
@@ -18,15 +19,14 @@ interface ThemeCacheEntry {
 const baseDir = path.join(process.cwd(), ".data", "user-themes");
 const serverCache = new Map<string, ThemeCacheEntry>();
 
+// 每个用户最多保留的主题版本数，防止磁盘被无限写满
+const MAX_VERSIONS_PER_USER = 50;
+
 const getTtlMs = (): number => {
   const raw = process.env.THEME_CACHE_TTL;
   const seconds = raw ? Number.parseInt(raw, 10) : 3600;
   if (Number.isFinite(seconds) && seconds > 0) return seconds * 1000;
   return 3600 * 1000;
-};
-
-const sanitizeSegment = (input: string): string => {
-  return input.replace(/[^a-zA-Z0-9_-]/g, "_");
 };
 
 const getUserDir = (userId: string): string => {
@@ -110,10 +110,18 @@ export async function saveUserTheme(input: SaveUserThemeInput): Promise<SaveUser
   const record: UserCssRecord = { version, versionName, css, hash, createdAt, userId: input.userId };
   const manifestPath = getManifestPath(input.userId);
   const manifest = (await readJsonFile<UserThemeManifest>(manifestPath)) ?? getEmptyManifest();
-  const nextVersions = [
+  const deduplicated = [
     ...manifest.versions.filter((v) => v.version !== version),
     { version, versionName, hash, createdAt }
   ].sort((a, b) => b.createdAt - a.createdAt);
+  // 超出上限时淘汰最旧版本，避免无限占用磁盘
+  const evicted = deduplicated.slice(MAX_VERSIONS_PER_USER);
+  const nextVersions = deduplicated.slice(0, MAX_VERSIONS_PER_USER);
+  for (const old of evicted) {
+    try { await fs.unlink(getCssPath(input.userId, old.version)); } catch { /* ignore */ }
+    try { await fs.unlink(getRecordPath(input.userId, old.version)); } catch { /* ignore */ }
+    serverCache.delete(getCacheKey(input.userId, old.version));
+  }
   const nextManifest: UserThemeManifest = { currentVersion: version, versions: nextVersions };
   await fs.writeFile(getCssPath(input.userId, version), css, "utf8");
   await writeJsonFile(getRecordPath(input.userId, version), record);

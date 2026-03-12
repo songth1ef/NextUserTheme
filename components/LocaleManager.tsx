@@ -2,18 +2,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/components/I18nProvider";
+import { fetchJson } from "@/lib/fetch-json";
 import type { I18nKeyDefinition, UserLocalePack } from "@/lib/i18n-types";
-
-const fetchJson = async <T,>(url: string, init?: RequestInit): Promise<T> => {
-  const res = await fetch(url, init);
-  const json = (await res.json().catch(() => null)) as T | null;
-  if (!res.ok) {
-    const message = typeof (json as any)?.message === "string" ? String((json as any).message) : `Request failed: ${res.status}`;
-    throw new Error(message);
-  }
-  if (!json) throw new Error("Invalid JSON response");
-  return json;
-};
 
 export function LocaleManager() {
   const { t, activePackId, switchPack, refreshPacks } = useI18n();
@@ -164,8 +154,12 @@ export function LocaleManager() {
     const a = document.createElement("a");
     a.href = url;
     a.download = `${userPack?.name ?? "translations"}.json`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    window.setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 1000);
   };
 
   const onImportJson = async (file: File | null): Promise<void> => {

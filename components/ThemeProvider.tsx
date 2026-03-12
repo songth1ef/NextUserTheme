@@ -6,6 +6,7 @@ import { cssCache } from "@/lib/css-cache";
 import { computeSha256Hex } from "@/lib/css-hash";
 import { injectStyle, removeAllUserThemeStyles, removeStyle } from "@/lib/css-injector";
 import { validateUserCss } from "@/lib/css-validator";
+import { fetchJson } from "@/lib/fetch-json";
 import type { UserCssRecord, VersionInfo } from "@/lib/types";
 
 interface ThemeContextValue {
@@ -25,17 +26,6 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-const fetchJson = async <T,>(url: string, init?: RequestInit): Promise<T> => {
-  const res = await fetch(url, init);
-  const json = (await res.json().catch(() => null)) as T | null;
-  if (!res.ok) {
-    const message = typeof (json as any)?.message === "string" ? String((json as any).message) : `Request failed: ${res.status}`;
-    throw new Error(message);
-  }
-  if (!json) throw new Error("Invalid JSON response");
-  return json;
-};
-
 const setBodyThemeClass = (enabled: boolean): void => {
   if (typeof document === "undefined") return;
   if (enabled) {
@@ -47,7 +37,7 @@ const setBodyThemeClass = (enabled: boolean): void => {
 
 const getSsrStyleCss = (version: string): string | null => {
   if (typeof document === "undefined") return null;
-  const el = document.getElementById(`user-theme-${version}`);
+  const el = document.getElementById(`uth-${version}`);
   if (!el) return null;
   if (el.tagName.toLowerCase() !== "style") return null;
   const css = (el as HTMLStyleElement).textContent ?? "";
@@ -62,7 +52,13 @@ interface UserInfoResponse {
   readonly userCSSUrl?: string;
 }
 
-export function ThemeProvider(props: { readonly children: ReactNode; readonly initialVersion?: string | null }) {
+interface ThemeProviderProps {
+  readonly children: ReactNode;
+  readonly initialVersion: string | null;
+  readonly ssrApplied: boolean;
+}
+
+export function ThemeProvider(props: ThemeProviderProps) {
   const [currentVersion, setCurrentVersion] = useState<string | null>(props.initialVersion ?? null);
   const [availableVersions, setAvailableVersions] = useState<string[]>([]);
   const [versionDetails, setVersionDetails] = useState<VersionInfo[]>([]);
@@ -70,13 +66,15 @@ export function ThemeProvider(props: { readonly children: ReactNode; readonly in
   const [error, setError] = useState<Error | null>(null);
   const [lastApplyTimeMs, setLastApplyTimeMs] = useState<number | null>(null);
   const requestSeq = useRef<number>(0);
-  const applyVersion = useCallback(async (input: { version: string; expectedHash?: string; cssUrl?: string; preferSsr?: boolean }): Promise<void> => {
+  const applyVersion = useCallback(async (input: { version: string; expectedHash?: string; cssUrl?: string; preferSsr?: boolean; silent?: boolean }): Promise<void> => {
     const seq = ++requestSeq.current;
     const startTime = performance.now();
-    setIsLoading(true);
-    setError(null);
-    setLastApplyTimeMs(null);
-    const styleId = `user-theme-${input.version}`;
+    if (!input.silent) {
+      setIsLoading(true);
+      setError(null);
+      setLastApplyTimeMs(null);
+    }
+    const styleId = `uth-${input.version}`;
     const done = async (css: string, hash: string): Promise<void> => {
       if (requestSeq.current !== seq) return;
       const record: UserCssRecord = { version: input.version, css, hash, createdAt: Date.now() };
@@ -85,16 +83,28 @@ export function ThemeProvider(props: { readonly children: ReactNode; readonly in
       injectStyle(styleId, css);
       setBodyThemeClass(true);
       setCurrentVersion(input.version);
-      const elapsed = performance.now() - startTime;
-      setLastApplyTimeMs(Math.round(elapsed * 100) / 100);
+      if (!input.silent) {
+        const elapsed = performance.now() - startTime;
+        setLastApplyTimeMs(Math.round(elapsed * 100) / 100);
+      }
     };
     try {
       if (input.preferSsr) {
         const ssrCss = getSsrStyleCss(input.version);
         if (ssrCss) {
           const hash = computeSha256Hex(ssrCss);
-          await done(ssrCss, hash);
-          return;
+          if (!input.expectedHash || hash === input.expectedHash) {
+            if (!input.silent) {
+              await done(ssrCss, hash);
+            } else {
+              const record: UserCssRecord = { version: input.version, css: ssrCss, hash, createdAt: Date.now() };
+              await cssCache.setCss(record);
+              await cssCache.setCurrentVersion(input.version);
+              setBodyThemeClass(true);
+              setCurrentVersion(input.version);
+            }
+            return;
+          }
         }
       }
       const cached = await cssCache.getCss(input.version);
@@ -115,12 +125,14 @@ export function ThemeProvider(props: { readonly children: ReactNode; readonly in
       await done(css, hash);
     } catch (e) {
       if (requestSeq.current !== seq) return;
-      setError(e instanceof Error ? e : new Error("Unknown error"));
-      setIsLoading(false);
+      if (!input.silent) {
+        setError(e instanceof Error ? e : new Error("Unknown error"));
+        setIsLoading(false);
+      }
       throw e;
     } finally {
       if (requestSeq.current !== seq) return;
-      setIsLoading(false);
+      if (!input.silent) setIsLoading(false);
     }
   }, []);
   const refreshVersions = useCallback(async (): Promise<void> => {
@@ -144,22 +156,49 @@ export function ThemeProvider(props: { readonly children: ReactNode; readonly in
       await cssCache.setCurrentVersion(null);
       return;
     }
+    const ssrCss = getSsrStyleCss(userInfo.userThemeVersion);
+    const ssrHashOk = !!ssrCss && (!userInfo.userThemeHash || computeSha256Hex(ssrCss) === userInfo.userThemeHash);
     await applyVersion({
       version: userInfo.userThemeVersion,
       expectedHash: userInfo.userThemeHash,
       cssUrl: userInfo.userCSSUrl,
-      preferSsr: true
+      preferSsr: true,
+      silent: ssrHashOk,
     });
   }, [applyVersion, refreshVersions]);
+
   useEffect(() => {
+    if (props.ssrApplied && props.initialVersion) {
+      const css = getSsrStyleCss(props.initialVersion);
+      if (css) {
+        const hash = computeSha256Hex(css);
+        const record: UserCssRecord = {
+          version: props.initialVersion,
+          css,
+          hash,
+          createdAt: Date.now(),
+        };
+        void cssCache.setCss(record);
+        void cssCache.setCurrentVersion(props.initialVersion);
+        setBodyThemeClass(true);
+        setCurrentVersion(props.initialVersion);
+        void refreshVersions();
+        return;
+      }
+    }
     void refreshTheme();
-  }, [refreshTheme]);
+  }, [props.initialVersion, props.ssrApplied, refreshTheme, refreshVersions]);
   const switchTheme = useCallback(async (version: string): Promise<void> => {
     const trimmed = version.trim();
     if (trimmed.length === 0) return;
-    if (currentVersion) removeStyle(`user-theme-${currentVersion}`);
+    // 先保存旧版本 ID；等新主题 apply 成功后再移除旧 style，
+    // 避免 apply 失败时页面丢失所有用户样式
+    const prevVersion = currentVersion;
     await applyVersion({ version: trimmed });
-    
+    if (prevVersion && prevVersion !== trimmed) {
+      removeStyle(`uth-${prevVersion}`);
+    }
+
     // 更新服务端的当前版本，确保刷新后保持
     try {
       await fetchJson<{ success: boolean }>("/api/user-theme/current", {

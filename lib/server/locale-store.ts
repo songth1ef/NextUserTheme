@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { computeSha256Hex } from "@/lib/css-hash";
+import { sanitizeSegment } from "@/lib/server/sanitize";
 import type { UserLocalePack, UserLocaleManifest, LocalePackInfo } from "@/lib/i18n-types";
 import builtinZhCN from "@/locales/zh-CN.json";
 
@@ -17,10 +18,6 @@ const getTtlMs = (): number => {
   const seconds = raw ? Number.parseInt(raw, 10) : 3600;
   if (Number.isFinite(seconds) && seconds > 0) return seconds * 1000;
   return 3600 * 1000;
-};
-
-const sanitizeSegment = (input: string): string => {
-  return input.replace(/[^a-zA-Z0-9_-]/g, "_");
 };
 
 const getUserDir = (userId: string): string => {
@@ -99,18 +96,17 @@ export async function getLocalePack(userId: string, packId: string): Promise<Use
 export async function listLocalePacks(userId: string): Promise<LocalePackInfo[]> {
   await ensureUserDir(userId);
   const manifest = (await readJsonFile<UserLocaleManifest>(getManifestPath(userId))) ?? getEmptyManifest();
-  const results: LocalePackInfo[] = [];
-  for (const entry of manifest.packs) {
-    const pack = await readJsonFile<UserLocalePack>(getPackPath(userId, entry.id));
-    results.push({
-      id: entry.id,
-      name: entry.name,
-      keyCount: pack ? Object.keys(pack.translations).length : 0,
-      createdAt: entry.createdAt,
-      updatedAt: entry.updatedAt,
-    });
-  }
-  return results;
+  // 并行读取所有语言包文件，避免 N+1 串行 I/O
+  const packFiles = await Promise.all(
+    manifest.packs.map((entry) => readJsonFile<UserLocalePack>(getPackPath(userId, entry.id)))
+  );
+  return manifest.packs.map((entry, i) => ({
+    id: entry.id,
+    name: entry.name,
+    keyCount: packFiles[i] ? Object.keys(packFiles[i]!.translations).length : 0,
+    createdAt: entry.createdAt,
+    updatedAt: entry.updatedAt,
+  }));
 }
 
 export interface CreateLocalePackInput {

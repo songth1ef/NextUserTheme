@@ -1,4 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
+import { idbUtils } from "@/lib/idb-utils";
 import type { UserCssRecord } from "@/lib/types";
 
 interface UserThemeDbSchema extends DBSchema {
@@ -16,10 +17,6 @@ interface UserThemeDbSchema extends DBSchema {
 const dbName = "next-user-theme";
 const dbVersion = 1;
 const currentVersionKey = "current-version";
-
-const isIndexedDbAvailable = (): boolean => {
-  return typeof indexedDB !== "undefined";
-};
 
 const createMemoryBackend = () => {
   const records = new Map<string, UserCssRecord>();
@@ -122,42 +119,35 @@ export interface CssCache {
 
 export const cssCache: CssCache = (() => {
   const memory = createMemoryBackend();
-  const indexed = isIndexedDbAvailable() ? createIndexedDbBackend() : null;
-  const safeCall = async <T>(fn: () => Promise<T>, fallback: () => Promise<T>): Promise<T> => {
-    try {
-      return await fn();
-    } catch {
-      return await fallback();
-    }
-  };
+  const indexed = idbUtils.isIndexedDbAvailable() ? createIndexedDbBackend() : null;
   return {
     async getCss(version: string): Promise<UserCssRecord | null> {
       if (!indexed) return await memory.getCss(version);
-      return await safeCall(() => indexed.getCss(version), () => memory.getCss(version));
+      return await idbUtils.safeCall(() => indexed.getCss(version), () => memory.getCss(version));
     },
     async setCss(record: UserCssRecord): Promise<void> {
       if (!indexed) return await memory.setCss(record);
-      await safeCall(() => indexed.setCss(record), () => memory.setCss(record));
+      await idbUtils.safeCall(() => indexed.setCss(record), () => memory.setCss(record));
     },
     async getAllVersions(): Promise<string[]> {
       if (!indexed) return await memory.getAllVersions();
-      return await safeCall(() => indexed.getAllVersions(), () => memory.getAllVersions());
+      return await idbUtils.safeCall(() => indexed.getAllVersions(), () => memory.getAllVersions());
     },
     async deleteCss(version: string): Promise<void> {
       if (!indexed) return await memory.deleteCss(version);
-      await safeCall(() => indexed.deleteCss(version), () => memory.deleteCss(version));
+      await idbUtils.safeCall(() => indexed.deleteCss(version), () => memory.deleteCss(version));
     },
     async getCurrentVersion(): Promise<string | null> {
       if (!indexed) return await memory.getCurrentVersion();
-      return await safeCall(() => indexed.getCurrentVersion(), () => memory.getCurrentVersion());
+      return await idbUtils.safeCall(() => indexed.getCurrentVersion(), () => memory.getCurrentVersion());
     },
     async setCurrentVersion(version: string | null): Promise<void> {
       if (!indexed) return await memory.setCurrentVersion(version);
-      await safeCall(() => indexed.setCurrentVersion(version), () => memory.setCurrentVersion(version));
+      await idbUtils.safeCall(() => indexed.setCurrentVersion(version), () => memory.setCurrentVersion(version));
     },
     async getHistory(): Promise<UserCssRecord[]> {
       if (!indexed) return await memory.getHistory();
-      return await safeCall(() => indexed.getHistory(), () => memory.getHistory());
+      return await idbUtils.safeCall(() => indexed.getHistory(), () => memory.getHistory());
     }
   };
 })();
