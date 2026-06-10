@@ -2,9 +2,9 @@ import { getUserIdFromRequest } from "@/lib/server/user-session";
 import { getLocalePack, updateLocalePack, deleteLocalePack } from "@/lib/server/locale-store";
 import { sanitizeSegment } from "@/lib/server/sanitize";
 
-export async function GET(request: Request, context: { params: { packId: string } }): Promise<Response> {
+export async function GET(request: Request, context: { params: Promise<{ packId: string }> }): Promise<Response> {
   const userId = getUserIdFromRequest(request);
-  const packId = context.params.packId;
+  const { packId } = await context.params;
   const expectedPrefix = `${sanitizeSegment(userId)}-`;
   if (!packId.startsWith(expectedPrefix)) {
     return Response.json({ success: false, message: "Forbidden" }, { status: 403 });
@@ -16,9 +16,9 @@ export async function GET(request: Request, context: { params: { packId: string 
   return Response.json({ pack });
 }
 
-export async function PUT(request: Request, context: { params: { packId: string } }): Promise<Response> {
+export async function PUT(request: Request, context: { params: Promise<{ packId: string }> }): Promise<Response> {
   const userId = getUserIdFromRequest(request);
-  const packId = context.params.packId;
+  const { packId } = await context.params;
   const expectedPrefix = `${sanitizeSegment(userId)}-`;
   if (!packId.startsWith(expectedPrefix)) {
     return Response.json({ success: false, message: "Forbidden" }, { status: 403 });
@@ -46,9 +46,9 @@ export async function PUT(request: Request, context: { params: { packId: string 
   return Response.json({ success: true, pack: updated });
 }
 
-export async function DELETE(request: Request, context: { params: { packId: string } }): Promise<Response> {
+export async function DELETE(request: Request, context: { params: Promise<{ packId: string }> }): Promise<Response> {
   const userId = getUserIdFromRequest(request);
-  const packId = context.params.packId;
+  const { packId } = await context.params;
   const expectedPrefix = `${sanitizeSegment(userId)}-`;
   if (!packId.startsWith(expectedPrefix)) {
     return Response.json({ success: false, message: "Forbidden" }, { status: 403 });

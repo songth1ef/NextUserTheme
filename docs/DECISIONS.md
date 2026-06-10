@@ -21,6 +21,20 @@
 - **理由**:满足"不碰 main"红线,保留逐任务回退能力(per-commit revert),审查成本
   低于 N 个互相依赖的分支。
 
+## 2026-06-11 ADR-005: 升级 Next 15 / React 19 / ESLint 9,lint 迁移到 ESLint CLI
+
+- **背景**:T8 —— ESLint 8 已 EOL,eslint-config-next@14 锁死 ESLint 8,升级必须
+  随 Next 联动(用户 2026-06-11 拍板执行)。
+- **选项**:① 仅升 ESLint、绕过 config-next 版本匹配(配置漂移,不受支持);
+  ② Next 15 + React 19 + ESLint 9 整体升级(官方路径);③ 直接 Next 16(改动面
+  更大,`next lint` 已移除,激进)。
+- **决定**:选项 ②(next 15.5 / react 19.2 / eslint 9.39 / eslint-config-next 15.5)。
+  代码适配:`cookies()` 异步化(layout)、动态路由 `params` 改 Promise(2 个 route)。
+  同时把 lint 从已弃用的 `next lint` 迁到 `eslint .` + flat config
+  (eslint.config.mjs,经 FlatCompat 桥接),为 Next 16 移除 `next lint` 提前铺路。
+- **理由**:走官方升级路径,改动面已验证(typecheck/test/build + 生产服冒烟:
+  首页 SSR、校验拒绝、提交→按版本读取→删除全链路 200);Next 16 留待下次。
+
 ## 2026-06-11 ADR-004: 并发竞态用进程内 keyed mutex 解决,store 经 DATA_DIR 可测化
 
 - **背景**:T6 —— theme/locale store 对 manifest.json 的读-改-写无锁,同用户并发请求

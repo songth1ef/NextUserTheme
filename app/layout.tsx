@@ -17,7 +17,8 @@ const officialCss = readFileSync(
 );
 
 export default async function RootLayout({ children }: { readonly children: ReactNode }) {
-  const userId = cookies().get("userId")?.value ?? "demo-user";
+  const cookieStore = await cookies();
+  const userId = cookieStore.get("userId")?.value ?? "demo-user";
   const timeoutMsRaw = process.env.THEME_FETCH_TIMEOUT;
   const timeoutMs = timeoutMsRaw ? Number.parseInt(timeoutMsRaw, 10) : 3000;
   const safeTimeoutMs = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 3000;

@@ -66,3 +66,29 @@
   3. T6/T7:文件存储并发竞态与 store 可测化改造,demo 定位下可继续接受,
      生产化前必须处理(KNOWN_ISSUES 有完整记录)。
 - **建议下一步**:合并后在 CI 挂上 `npm test + typecheck + lint` 作为门禁。
+
+## [2026-06-11 07:05] T6+T7 store 并发安全与可测化 —— done
+
+- 改动:新增 lib/server/keyed-mutex.ts(按 key 串行队列);theme/locale store 全部
+  写路径按 userId 加锁;数据根目录改读 DATA_DIR 环境变量(默认不变);
+  getUserThemeCss 兜底 record 回退 manifest 元数据(T7)。
+- 测试:新增 22 用例(keyed-mutex 串行性 4、theme-store 5、locale-store 4 等,
+  含"并发保存 8 版本不丢条目"竞态回归);全量 72/72,typecheck/lint 绿。
+- 文档:README 补 DATA_DIR;ADR-004;KNOWN_ISSUES 并发条目改为"进程内已修,
+  多实例仍需 DB"。
+- 提交:631ff46
+- 遗留:锁仅进程内有效(既定 demo 约束)。
+
+## [2026-06-11 07:20] T8 Next 15 / React 19 / ESLint 9 升级 —— done
+
+- 改动:next 14.2→15.5、react 18.3→19.2、eslint 8→9.39、eslint-config-next 15.5;
+  layout.tsx `cookies()` 异步化;2 个动态路由 params 改 Promise;lint 从弃用的
+  `next lint` 迁移到 `eslint .` + eslint.config.mjs(flat config,FlatCompat 桥接,
+  已验证 21 条 @next/next 规则生效),删除 .eslintrc.json。
+- 测试:typecheck / 72 测试 / lint / build 全绿;生产服冒烟:首页 SSR 200、
+  恶意 CSS 校验 400、提交→按版本读取→删除全链路 200。
+- 文档:ADR-005;BACKLOG T8 勾掉。
+- 提交:(本条)
+- 遗留:`next lint` 弃用警告已消除;Next 16 留待下次拍板。
+- 附:清理了 2026-06-10 误操作在 D:\code\github 留下的空 package-lock.json
+  (曾触发 Next workspace root 误判警告)。

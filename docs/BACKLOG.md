@@ -27,12 +27,10 @@
 
 ## P2
 
-- [ ] **T6 manifest 并发写竞态** — theme-store / locale-store 对 manifest.json 的
+- [x] **T6 manifest 并发写竞态** — theme-store / locale-store 对 manifest.json 的
   读-改-写无锁,并发请求会互相覆盖。demo 单用户影响小;生产需换 DB(见 KNOWN_ISSUES)。
   若做:进程内 per-user 串行队列。
-- [ ] **T7 getUserThemeCss 兜底 record 伪造 createdAt** — record 文件缺失时用
-  `Date.now()` 现造,应回退 manifest 里的真实条目。2026-06-10 评估:修复本身
-  数行,但 theme-store 依赖 `process.cwd()/.data`,无法在不动模块结构的前提下
-  补单测(质量门要求),留待与 T6 一起做 store 可测化改造时处理。
-- [ ] **T8 ESLint 8 已 EOL** — 升级 ESLint 9 / eslint-config-next 需随 Next 升级联动,
-  属依赖大版本变更,需人工拍板(见 KNOWN_ISSUES)。
+- [x] **T7 getUserThemeCss 兜底 record 伪造 createdAt** — 已随 T6 的 store
+  可测化改造(DATA_DIR 注入)一并修复,回退 manifest 真实元数据。
+- [x] **T8 ESLint 8 已 EOL** — 用户 2026-06-11 拍板,已升级 Next 15.5 / React 19.2 /
+  ESLint 9.39,lint 迁移 ESLint CLI + flat config(ADR-005)。后续可选:Next 16。

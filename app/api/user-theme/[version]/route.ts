@@ -2,9 +2,9 @@ import { getUserIdFromRequest } from "@/lib/server/user-session";
 import { getUserThemeCss, deleteUserThemeVersion, renameUserThemeVersion } from "@/lib/server/theme-store";
 import { sanitizeSegment } from "@/lib/server/sanitize";
 
-export async function GET(request: Request, context: { params: { version: string } }): Promise<Response> {
+export async function GET(request: Request, context: { params: Promise<{ version: string }> }): Promise<Response> {
   const userId = getUserIdFromRequest(request);
-  const version = context.params.version;
+  const { version } = await context.params;
   const expectedPrefix = `${sanitizeSegment(userId)}-`;
   if (!version.startsWith(expectedPrefix)) return new Response("Forbidden", { status: 403 });
   const css = await getUserThemeCss(userId, version);
@@ -12,9 +12,9 @@ export async function GET(request: Request, context: { params: { version: string
   return new Response(css, { status: 200, headers: { "Content-Type": "text/css; charset=utf-8", "Cache-Control": "no-store" } });
 }
 
-export async function DELETE(request: Request, context: { params: { version: string } }): Promise<Response> {
+export async function DELETE(request: Request, context: { params: Promise<{ version: string }> }): Promise<Response> {
   const userId = getUserIdFromRequest(request);
-  const version = context.params.version;
+  const { version } = await context.params;
   const expectedPrefix = `${sanitizeSegment(userId)}-`;
   if (!version.startsWith(expectedPrefix)) return Response.json({ success: false, message: "Forbidden" }, { status: 403 });
   const deleted = await deleteUserThemeVersion(userId, version);
@@ -22,9 +22,9 @@ export async function DELETE(request: Request, context: { params: { version: str
   return Response.json({ success: true });
 }
 
-export async function PUT(request: Request, context: { params: { version: string } }): Promise<Response> {
+export async function PUT(request: Request, context: { params: Promise<{ version: string }> }): Promise<Response> {
   const userId = getUserIdFromRequest(request);
-  const version = context.params.version;
+  const { version } = await context.params;
   const expectedPrefix = `${sanitizeSegment(userId)}-`;
   if (!version.startsWith(expectedPrefix)) return Response.json({ success: false, message: "Forbidden" }, { status: 403 });
   const body = (await request.json().catch(() => null)) as { versionName?: unknown } | null;
