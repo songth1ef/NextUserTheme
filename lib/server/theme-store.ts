@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { computeSha256Hex } from "@/lib/css-hash";
 import { sanitizeSegment } from "@/lib/server/sanitize";
+import { withKeyLock } from "@/lib/server/keyed-mutex";
 import type { ColorMode, UserCssRecord, VersionInfo } from "@/lib/types";
 
 interface UserThemeManifest {
@@ -16,8 +17,14 @@ interface ThemeCacheEntry {
   readonly expiresAt: number;
 }
 
-const baseDir = path.join(process.cwd(), ".data", "user-themes");
+// DATA_DIR 允许测试/部署覆盖数据根目录,默认 <cwd>/.data
+const getBaseDir = (): string => {
+  return path.join(process.env.DATA_DIR ?? path.join(process.cwd(), ".data"), "user-themes");
+};
 const serverCache = new Map<string, ThemeCacheEntry>();
+
+// 同一用户的 manifest 读-改-写必须串行,防止并发互相覆盖
+const lockKey = (userId: string): string => `theme:${sanitizeSegment(userId)}`;
 
 // 每个用户最多保留的主题版本数，防止磁盘被无限写满
 const MAX_VERSIONS_PER_USER = 50;
@@ -30,7 +37,7 @@ const getTtlMs = (): number => {
 };
 
 const getUserDir = (userId: string): string => {
-  return path.join(baseDir, sanitizeSegment(userId));
+  return path.join(getBaseDir(), sanitizeSegment(userId));
 };
 
 const getManifestPath = (userId: string): string => {
@@ -101,6 +108,10 @@ export interface SaveUserThemeResult {
 }
 
 export async function saveUserTheme(input: SaveUserThemeInput): Promise<SaveUserThemeResult> {
+  return withKeyLock(lockKey(input.userId), () => saveUserThemeUnlocked(input));
+}
+
+async function saveUserThemeUnlocked(input: SaveUserThemeInput): Promise<SaveUserThemeResult> {
   await ensureUserDir(input.userId);
   const css = input.css;
   const createdAt = Date.now();
@@ -172,6 +183,10 @@ export async function listUserThemeVersionsDetailed(userId: string): Promise<Ver
 }
 
 export async function deleteUserThemeVersion(userId: string, version: string): Promise<boolean> {
+  return withKeyLock(lockKey(userId), () => deleteUserThemeVersionUnlocked(userId, version));
+}
+
+async function deleteUserThemeVersionUnlocked(userId: string, version: string): Promise<boolean> {
   await ensureUserDir(userId);
   const manifestPath = getManifestPath(userId);
   const manifest = (await readJsonFile<UserThemeManifest>(manifestPath)) ?? getEmptyManifest();
@@ -188,6 +203,10 @@ export async function deleteUserThemeVersion(userId: string, version: string): P
 }
 
 export async function renameUserThemeVersion(userId: string, version: string, newName: string): Promise<boolean> {
+  return withKeyLock(lockKey(userId), () => renameUserThemeVersionUnlocked(userId, version, newName));
+}
+
+async function renameUserThemeVersionUnlocked(userId: string, version: string, newName: string): Promise<boolean> {
   await ensureUserDir(userId);
   const manifestPath = getManifestPath(userId);
   const manifest = (await readJsonFile<UserThemeManifest>(manifestPath)) ?? getEmptyManifest();
@@ -223,7 +242,20 @@ export async function getUserThemeCss(userId: string, version: string): Promise<
   if (cached) return cached.css;
   try {
     const css = await fs.readFile(getCssPath(userId, version), "utf8");
-    const record = (await readJsonFile<UserCssRecord>(getRecordPath(userId, version))) ?? { version, css, hash: computeSha256Hex(css), createdAt: Date.now(), userId };
+    let record = await readJsonFile<UserCssRecord>(getRecordPath(userId, version));
+    if (!record) {
+      // record 文件缺失时回退 manifest 里的真实元数据,而不是现造 createdAt
+      const manifest = (await readJsonFile<UserThemeManifest>(getManifestPath(userId))) ?? getEmptyManifest();
+      const entry = manifest.versions.find((v) => v.version === version);
+      record = {
+        version,
+        versionName: entry?.versionName ?? version,
+        css,
+        hash: entry?.hash ?? computeSha256Hex(css),
+        createdAt: entry?.createdAt ?? 0,
+        userId
+      };
+    }
     setCache(userId, version, css, record);
     return css;
   } catch {
@@ -238,10 +270,12 @@ export async function getColorMode(userId: string): Promise<ColorMode> {
 }
 
 export async function setColorMode(userId: string, mode: ColorMode): Promise<void> {
-  await ensureUserDir(userId);
-  const manifestPath = getManifestPath(userId);
-  const manifest = (await readJsonFile<UserThemeManifest>(manifestPath)) ?? getEmptyManifest();
-  await writeJsonFile(manifestPath, { ...manifest, colorMode: mode });
+  return withKeyLock(lockKey(userId), async () => {
+    await ensureUserDir(userId);
+    const manifestPath = getManifestPath(userId);
+    const manifest = (await readJsonFile<UserThemeManifest>(manifestPath)) ?? getEmptyManifest();
+    await writeJsonFile(manifestPath, { ...manifest, colorMode: mode });
+  });
 }
 
 export async function getCurrentUserTheme(userId: string): Promise<{ record: UserCssRecord; css: string } | null> {
@@ -260,6 +294,10 @@ export async function getCurrentUserTheme(userId: string): Promise<{ record: Use
 }
 
 export async function setCurrentUserThemeVersion(userId: string, version: string | null): Promise<boolean> {
+  return withKeyLock(lockKey(userId), () => setCurrentUserThemeVersionUnlocked(userId, version));
+}
+
+async function setCurrentUserThemeVersionUnlocked(userId: string, version: string | null): Promise<boolean> {
   await ensureUserDir(userId);
   const manifestPath = getManifestPath(userId);
   const manifest = (await readJsonFile<UserThemeManifest>(manifestPath)) ?? getEmptyManifest();

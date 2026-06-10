@@ -344,6 +344,9 @@ THEME_CACHE_TTL=3600
 
 # 服务端翻译内存缓存 TTL（秒），默认 3600
 I18N_CACHE_TTL=3600
+
+# 服务端数据根目录，默认 <cwd>/.data（测试/部署可覆盖）
+DATA_DIR=./.data
 ```
 
 ## 开发

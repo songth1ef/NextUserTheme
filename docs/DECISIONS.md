@@ -21,6 +21,18 @@
 - **理由**:满足"不碰 main"红线,保留逐任务回退能力(per-commit revert),审查成本
   低于 N 个互相依赖的分支。
 
+## 2026-06-11 ADR-004: 并发竞态用进程内 keyed mutex 解决,store 经 DATA_DIR 可测化
+
+- **背景**:T6 —— theme/locale store 对 manifest.json 的读-改-写无锁,同用户并发请求
+  互相覆盖;T7 修复与并发测试都需要 store 可注入数据目录。
+- **选项**:① 文件锁(proper-lockfile 等,新增依赖,跨平台坑多);② 改 DB(超出
+  demo 范围);③ 进程内按 userId 排队(零依赖,单实例内正确)。
+- **决定**:选项 ③(`lib/server/keyed-mutex.ts`),写操作按 `theme:<userId>` /
+  `locale:<userId>` 串行;数据根目录从模块级常量改为读 `DATA_DIR` 环境变量的函数
+  (默认不变,测试用临时目录)。
+- **理由**:单实例文件存储是既定 demo 约束(KNOWN_ISSUES 已声明),进程内锁在该
+  约束下完全正确且零依赖;多实例部署本就需要换 DB,届时锁随存储层一起替换。
+
 ## 2026-06-10 ADR-003: [assumption] T2 校验绕过修复采用"受限属性禁用函数值"策略
 
 - **背景**:`position` / `z-index` 黑名单只解析首个 word token,`var()` / `calc()` /

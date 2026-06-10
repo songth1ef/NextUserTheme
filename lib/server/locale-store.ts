@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { computeSha256Hex } from "@/lib/css-hash";
 import { sanitizeSegment } from "@/lib/server/sanitize";
+import { withKeyLock } from "@/lib/server/keyed-mutex";
 import type { UserLocalePack, UserLocaleManifest, LocalePackInfo } from "@/lib/i18n-types";
 import builtinZhCN from "@/locales/zh-CN.json";
 
@@ -10,8 +11,14 @@ interface LocaleCacheEntry {
   readonly expiresAt: number;
 }
 
-const baseDir = path.join(process.cwd(), ".data", "user-locales");
+// DATA_DIR 允许测试/部署覆盖数据根目录,默认 <cwd>/.data
+const getBaseDir = (): string => {
+  return path.join(process.env.DATA_DIR ?? path.join(process.cwd(), ".data"), "user-locales");
+};
 const serverCache = new Map<string, LocaleCacheEntry>();
+
+// 同一用户的 manifest 读-改-写必须串行,防止并发互相覆盖
+const lockKey = (userId: string): string => `locale:${sanitizeSegment(userId)}`;
 
 const getTtlMs = (): number => {
   const raw = process.env.I18N_CACHE_TTL;
@@ -21,7 +28,7 @@ const getTtlMs = (): number => {
 };
 
 const getUserDir = (userId: string): string => {
-  return path.join(baseDir, sanitizeSegment(userId));
+  return path.join(getBaseDir(), sanitizeSegment(userId));
 };
 
 const getManifestPath = (userId: string): string => {
@@ -116,6 +123,10 @@ export interface CreateLocalePackInput {
 }
 
 export async function createLocalePack(input: CreateLocalePackInput): Promise<UserLocalePack> {
+  return withKeyLock(lockKey(input.userId), () => createLocalePackUnlocked(input));
+}
+
+async function createLocalePackUnlocked(input: CreateLocalePackInput): Promise<UserLocalePack> {
   await ensureUserDir(input.userId);
   const now = Date.now();
   const hash = computeSha256Hex(input.name + String(now));
@@ -141,6 +152,10 @@ export async function createLocalePack(input: CreateLocalePackInput): Promise<Us
 }
 
 export async function updateLocalePack(userId: string, packId: string, updates: { name?: string; translations?: Record<string, string> }): Promise<UserLocalePack | null> {
+  return withKeyLock(lockKey(userId), () => updateLocalePackUnlocked(userId, packId, updates));
+}
+
+async function updateLocalePackUnlocked(userId: string, packId: string, updates: { name?: string; translations?: Record<string, string> }): Promise<UserLocalePack | null> {
   await ensureUserDir(userId);
   const pack = await readJsonFile<UserLocalePack>(getPackPath(userId, packId));
   if (!pack) return null;
@@ -166,6 +181,10 @@ export async function updateLocalePack(userId: string, packId: string, updates: 
 }
 
 export async function deleteLocalePack(userId: string, packId: string): Promise<boolean> {
+  return withKeyLock(lockKey(userId), () => deleteLocalePackUnlocked(userId, packId));
+}
+
+async function deleteLocalePackUnlocked(userId: string, packId: string): Promise<boolean> {
   await ensureUserDir(userId);
   const manifestPath = getManifestPath(userId);
   const manifest = (await readJsonFile<UserLocaleManifest>(manifestPath)) ?? getEmptyManifest();
@@ -180,16 +199,18 @@ export async function deleteLocalePack(userId: string, packId: string): Promise<
 }
 
 export async function setActiveLocalePack(userId: string, packId: string | null): Promise<boolean> {
-  await ensureUserDir(userId);
-  const manifestPath = getManifestPath(userId);
-  const manifest = (await readJsonFile<UserLocaleManifest>(manifestPath)) ?? getEmptyManifest();
-  if (packId !== null) {
-    const exists = manifest.packs.some((p) => p.id === packId);
-    if (!exists) return false;
-  }
-  await writeJsonFile(manifestPath, { ...manifest, activePackId: packId });
-  invalidateCache(userId);
-  return true;
+  return withKeyLock(lockKey(userId), async () => {
+    await ensureUserDir(userId);
+    const manifestPath = getManifestPath(userId);
+    const manifest = (await readJsonFile<UserLocaleManifest>(manifestPath)) ?? getEmptyManifest();
+    if (packId !== null) {
+      const exists = manifest.packs.some((p) => p.id === packId);
+      if (!exists) return false;
+    }
+    await writeJsonFile(manifestPath, { ...manifest, activePackId: packId });
+    invalidateCache(userId);
+    return true;
+  });
 }
 
 export interface ResolvedTranslations {
