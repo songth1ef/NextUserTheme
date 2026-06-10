@@ -143,8 +143,8 @@ NextUserTheme/
 #### `POST /api/user-theme` — 提交 CSS 主题
 
 ```json
-// Request
-{ "css": ":root { --color-primary: #ff4d4f; }", "source": "ai" | "upload" }
+// Request(三个字段均必填,versionName 缺失返回 400)
+{ "css": ":root { --color-primary: #ff4d4f; }", "source": "ai" | "upload", "versionName": "我的红色主题" }
 
 // Response
 { "success": true, "version": "demo-user-abc123def456", "hash": "sha256...", "cssUrl": "/api/user-theme/demo-user-abc123def456" }
@@ -200,6 +200,8 @@ NextUserTheme/
 ```json
 { "mode": "dark" }
 ```
+
+未设置过时默认返回 `dark`。
 
 #### `PUT /api/color-mode` — 设置色彩模式
 
@@ -309,7 +311,7 @@ async function submitTheme(css: string) {
   const res = await fetch('/api/user-theme', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ css, source: 'upload' })
+    body: JSON.stringify({ css, source: 'upload', versionName: '我的主题' })
   })
   const data = await res.json()
   if (data.success) {
