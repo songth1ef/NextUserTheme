@@ -347,6 +347,7 @@ I18N_CACHE_TTL=3600
 ```bash
 npm run typecheck   # TypeScript 类型检查
 npm run lint        # ESLint 检查
+npm test            # 单元测试(vitest,tests/ 目录)
 npm run build       # 生产构建
 ```
 
