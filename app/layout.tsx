@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { validateUserCss } from "@/lib/css-validator";
 import { getCurrentUserTheme, getColorMode } from "@/lib/server/theme-store";
 import { getResolvedTranslations, getBuiltinTranslations } from "@/lib/server/locale-store";
+import { withTimeout } from "@/lib/server/with-timeout";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { I18nProvider } from "@/components/I18nProvider";
 import { ColorModeProvider } from "@/components/ColorModeProvider";
@@ -22,17 +23,13 @@ export default async function RootLayout({ children }: { readonly children: Reac
   const safeTimeoutMs = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 3000;
 
   const [theme, i18n, colorMode] = await Promise.all([
-    getCurrentUserTheme(userId).catch(() => null),
-    Promise.race([
-      getResolvedTranslations(userId),
-      new Promise<{ packId: null; packName: string; translations: Record<string, string> }>((resolve) =>
-        setTimeout(() => resolve({ packId: null, packName: "简体中文（预置）", translations: getBuiltinTranslations() }), safeTimeoutMs)
-      )
-    ]),
-    Promise.race([
-      getColorMode(userId),
-      new Promise<"dark">((resolve) => setTimeout(() => resolve("dark"), safeTimeoutMs))
-    ]),
+    withTimeout(getCurrentUserTheme(userId), safeTimeoutMs, null),
+    withTimeout(getResolvedTranslations(userId), safeTimeoutMs, {
+      packId: null,
+      packName: "简体中文（预置）",
+      translations: getBuiltinTranslations()
+    }),
+    withTimeout(getColorMode(userId), safeTimeoutMs, "dark" as const),
   ]);
 
   let userCss: string | null = null;
