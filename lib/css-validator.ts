@@ -77,17 +77,39 @@ const hasUrlFunction = (value: string): boolean => {
   return found;
 };
 
+// 受限属性(position/z-index/根级 display)禁止任何函数值:
+// var()/calc()/env() 可在 :root 定义自定义属性后携带任意最终值,绕过字面量黑名单
+const hasFunctionValue = (value: string): boolean => {
+  const parsed = valueParser(value);
+  let found = false;
+  parsed.walk((node) => {
+    if (node.type === "function") {
+      found = true;
+      return false;
+    }
+    return undefined;
+  });
+  return found;
+};
+
+// :root、:root[...]、html[...] 等根级选择器,display: none 会整页隐藏
+const isRootLevelSelector = (selector: string): boolean => {
+  return /^(:root|html)(\s*$|\s*\[)/i.test(selector.trim());
+};
+
 const isForbiddenDecl = (input: { prop: string; value: string; selectorHint?: string }): string | null => {
   const prop = input.prop.trim().toLowerCase();
   const value = input.value.trim();
   const valueLower = value.toLowerCase();
   if (hasUrlFunction(valueLower)) return `禁止外部资源：检测到 url()`;
   if (prop === "position") {
+    if (hasFunctionValue(valueLower)) return "禁止属性：position 只允许字面量值（var()/calc() 等函数值可绕过校验）";
     const firstToken = valueParser(valueLower).nodes.find((n) => n.type === "word")?.value ?? "";
     if (firstToken === "fixed" || firstToken === "sticky") return `禁止属性：position: ${firstToken}`;
     return null;
   }
   if (prop === "z-index") {
+    if (hasFunctionValue(valueLower)) return "禁止属性：z-index 只允许字面量值（var()/calc() 等函数值可绕过校验）";
     const firstToken = valueParser(valueLower).nodes.find((n) => n.type === "word")?.value ?? "";
     const num = Number.parseInt(firstToken, 10);
     if (!Number.isNaN(num) && num > 1000) return `禁止属性：z-index > 1000（当前 ${num}）`;
@@ -97,7 +119,9 @@ const isForbiddenDecl = (input: { prop: string; value: string; selectorHint?: st
   if (prop === "behavior") return "禁止属性：behavior";
   if (prop === "expression") return "禁止属性：expression";
   if (prop === "display") {
-    if ((input.selectorHint ?? "").trim().toLowerCase() === ":root" && valueLower === "none") return "禁止规则：:root 上不允许 display: none";
+    if (!isRootLevelSelector(input.selectorHint ?? "")) return null;
+    if (valueLower === "none") return "禁止规则：根级选择器上不允许 display: none";
+    if (hasFunctionValue(valueLower)) return "禁止属性：根级选择器上的 display 只允许字面量值";
     return null;
   }
   return null;

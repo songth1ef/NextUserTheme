@@ -95,6 +95,36 @@ describe("validateUserCss 属性限制", () => {
   });
 });
 
+describe("validateUserCss 绕过防护(T2)", () => {
+  it("禁止用 var() 绕过 position 黑名单", () => {
+    invalid(
+      ":root { --p: fixed; }\n.user-theme .a { position: var(--p); }",
+      "position"
+    );
+  });
+
+  it("禁止用 var() / calc() 绕过 z-index 上限", () => {
+    invalid(
+      ":root { --z: 99999; }\n.user-theme .a { z-index: var(--z); }",
+      "z-index"
+    );
+    invalid(".user-theme .a { z-index: calc(999 + 999); }", "z-index");
+  });
+
+  it("禁止在 :root 变体选择器上 display: none(整页隐藏)", () => {
+    invalid(':root[data-color-mode="dark"] { display: none; }', "display: none");
+    invalid('html[data-color-mode="light"] { display: none; }', "display: none");
+  });
+
+  it("禁止用 var() 绕过根级 display 守卫", () => {
+    invalid(":root { --d: none; display: var(--d); }", "display");
+  });
+
+  it("position / z-index 的字面量合法值不受影响", () => {
+    valid(".user-theme .a { position: absolute; z-index: 10; }");
+  });
+});
+
 describe("validateUserCss 边界与错误路径", () => {
   it("空字符串与纯空白", () => {
     invalid("", "CSS 为空");

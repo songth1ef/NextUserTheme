@@ -30,6 +30,8 @@ npm start
 - 允许：`.user-theme .class { ... }`（作用域样式）
 - 禁止：`body`、`html`、`*` 全局选择器
 - 禁止：`position: fixed`、`z-index > 1000` 危险属性
+- 禁止：受限属性(`position` / `z-index` / 根级 `display`)使用 `var()`、`calc()` 等函数值（防自定义属性绕过黑名单）
+- 禁止：根级选择器（`:root`、`html[data-color-mode=...]`）上的 `display: none`
 - 禁止：`@import`、`@font-face`、`url()` 外部资源
 
 **版本管理：** 每次提交生成独立版本（基于 SHA-256 哈希），支持切换、重命名、删除和回退至官方主题。
